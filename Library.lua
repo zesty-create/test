@@ -2282,8 +2282,6 @@ do
         RecalculateListPosition();
         RecalculateListSize();
 
-        DropdownOuter:GetPropertyChangedSignal('AbsolutePosition'):Connect(RecalculateListPosition);
-
         local ListInner = Library:Create('Frame', {
             BackgroundColor3 = Library.MainColor;
             BorderColor3 = Library.OutlineColor;
