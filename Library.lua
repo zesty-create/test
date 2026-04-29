@@ -966,40 +966,27 @@ do
             end);
         end;
 
-Library:GiveSignal(InputService.InputBegan:Connect(function(Input, Processed)
-    if Processed then return end  -- <-- вот это
+        Library:GiveSignal(InputService.InputBegan:Connect(function(Input)
+            if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+                local AbsPos, AbsSize = PickerFrameOuter.AbsolutePosition, PickerFrameOuter.AbsoluteSize;
 
-    if (not Picking) then
-        if KeyPicker.Mode == 'Toggle' then
-            local Key = KeyPicker.Value;
+                if Mouse.X < AbsPos.X or Mouse.X > AbsPos.X + AbsSize.X
+                    or Mouse.Y < (AbsPos.Y - 20 - 1) or Mouse.Y > AbsPos.Y + AbsSize.Y then
 
-            if Key == 'MB1' or Key == 'MB2' then
-                if Key == 'MB1' and Input.UserInputType == Enum.UserInputType.MouseButton1
-                or Key == 'MB2' and Input.UserInputType == Enum.UserInputType.MouseButton2 then
-                    KeyPicker.Toggled = not KeyPicker.Toggled
-                    KeyPicker:DoClick()
+                    ColorPicker:Hide();
                 end;
-            elseif Input.UserInputType == Enum.UserInputType.Keyboard then
-                if Input.KeyCode.Name == Key then
-                    KeyPicker.Toggled = not KeyPicker.Toggled;
-                    KeyPicker:DoClick()
-                end;
+
+                if not Library:IsMouseOverFrame(ContextMenu.Container) then
+                    ContextMenu:Hide()
+                end
             end;
-        end;
 
-        KeyPicker:Update();
-    end;
-
-    if Input.UserInputType == Enum.UserInputType.MouseButton1 then
-        local AbsPos, AbsSize = ModeSelectOuter.AbsolutePosition, ModeSelectOuter.AbsoluteSize;
-
-        if Mouse.X < AbsPos.X or Mouse.X > AbsPos.X + AbsSize.X
-            or Mouse.Y < (AbsPos.Y - 20 - 1) or Mouse.Y > AbsPos.Y + AbsSize.Y then
-
-            ModeSelectOuter.Visible = false;
-        end;
-    end;
-end))
+            if Input.UserInputType == Enum.UserInputType.MouseButton2 and ContextMenu.Container.Visible then
+                if not Library:IsMouseOverFrame(ContextMenu.Container) and not Library:IsMouseOverFrame(DisplayFrame) then
+                    ContextMenu:Hide()
+                end
+            end
+        end))
 
         ColorPicker:Display();
         ColorPicker.DisplayFrame = DisplayFrame
@@ -3133,8 +3120,6 @@ function Library:CreateWindow(...)
             Parent = TabFrame;
         });
 
-        DropdownOuter:GetPropertyChangedSignal('AbsolutePosition'):Connect(RecalculateListPosition);
-
         local RightSide = Library:Create('ScrollingFrame', {
             BackgroundTransparency = 1;
             BorderSizePixel = 0;
@@ -3147,19 +3132,6 @@ function Library:CreateWindow(...)
             ZIndex = 2;
             Parent = TabFrame;
         });
-
-            local ParentScroll = DropdownOuter:FindFirstAncestorWhichIsA('ScrollingFrame')
-    if ParentScroll and ListOuter.Visible then
-        local DropPos = DropdownOuter.AbsolutePosition
-        local DropSize = DropdownOuter.AbsoluteSize
-        local ScrollPos = ParentScroll.AbsolutePosition
-        local ScrollSize = ParentScroll.AbsoluteSize
-
-        if DropPos.Y < ScrollPos.Y or DropPos.Y + DropSize.Y > ScrollPos.Y + ScrollSize.Y then
-            Dropdown:CloseDropdown()
-        end
-    end
-end)
 
         Library:Create('UIListLayout', {
             Padding = UDim.new(0, 8);
