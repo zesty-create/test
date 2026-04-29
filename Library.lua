@@ -3135,6 +3135,21 @@ function Library:CreateWindow(...)
             Parent = TabFrame;
         });
 
+        DropdownOuter:GetPropertyChangedSignal('AbsolutePosition'):Connect(RecalculateListPosition);
+
+        DropdownOuter:GetPropertyChangedSignal('AbsolutePosition'):Connect(function()
+    local ParentScroll = DropdownOuter:FindFirstAncestorWhichIsA('ScrollingFrame')
+    if ParentScroll and ListOuter.Visible then
+        local DropPos = DropdownOuter.AbsolutePosition
+        local DropSize = DropdownOuter.AbsoluteSize
+        local ScrollPos = ParentScroll.AbsolutePosition
+        local ScrollSize = ParentScroll.AbsoluteSize
+        if DropPos.Y < ScrollPos.Y or DropPos.Y + DropSize.Y > ScrollPos.Y + ScrollSize.Y then
+            Dropdown:CloseDropdown()
+        end
+    end
+end)
+
         Library:Create('UIListLayout', {
             Padding = UDim.new(0, 8);
             FillDirection = Enum.FillDirection.Vertical;
