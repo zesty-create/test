@@ -2269,9 +2269,26 @@ do
             Parent = ScreenGui;
         });
 
-        local function RecalculateListPosition()
-            ListOuter.Position = UDim2.fromOffset(DropdownOuter.AbsolutePosition.X, DropdownOuter.AbsolutePosition.Y + DropdownOuter.Size.Y.Offset + 1);
-        end;
+local function RecalculateListPosition()
+    local ScreenSize = ScreenGui.AbsoluteSize;
+    local PosX = DropdownOuter.AbsolutePosition.X;
+    local PosY = DropdownOuter.AbsolutePosition.Y + DropdownOuter.Size.Y.Offset + 1;
+    local ListSizeY = ListOuter.Size.Y.Offset;
+    local ListSizeX = ListOuter.Size.X.Offset;
+            
+    if PosY + ListSizeY > ScreenSize.Y then
+        PosY = DropdownOuter.AbsolutePosition.Y - ListSizeY - 1;
+    end;
+            
+    if PosX + ListSizeX > ScreenSize.X then
+        PosX = ScreenSize.X - ListSizeX;
+    end;
+
+    PosX = math.max(0, PosX);
+    PosY = math.max(0, PosY);
+
+    ListOuter.Position = UDim2.fromOffset(PosX, PosY);
+end;
 
         local function RecalculateListSize(YSize)
             ListOuter.Size = UDim2.fromOffset(DropdownOuter.AbsoluteSize.X, YSize or (MAX_DROPDOWN_ITEMS * 20 + 2))
@@ -3560,15 +3577,17 @@ function Library:Toggle()
     Fading = false;
 end;
 
-    Library:GiveSignal(InputService.InputBegan:Connect(function(Input, Processed)
-        if type(Library.ToggleKeybind) == 'table' and Library.ToggleKeybind.Type == 'KeyPicker' then
-            if Input.UserInputType == Enum.UserInputType.Keyboard and Input.KeyCode.Name == Library.ToggleKeybind.Value then
-                task.spawn(Library.Toggle)
-            end
-        elseif Input.KeyCode == Enum.KeyCode.RightControl or (Input.KeyCode == Enum.KeyCode.RightShift and (not Processed)) then
+Library:GiveSignal(InputService.InputBegan:Connect(function(Input, Processed)
+    if Processed then return end
+
+    if type(Library.ToggleKeybind) == 'table' and Library.ToggleKeybind.Type == 'KeyPicker' then
+        if Input.UserInputType == Enum.UserInputType.Keyboard and Input.KeyCode.Name == Library.ToggleKeybind.Value then
             task.spawn(Library.Toggle)
         end
-    end))
+    elseif Input.KeyCode == Enum.KeyCode.RightControl or Input.KeyCode == Enum.KeyCode.RightShift then
+        task.spawn(Library.Toggle)
+    end
+end))
 
     if Config.AutoShow then task.spawn(Library.Toggle) end
 
