@@ -2204,20 +2204,20 @@ do
             Parent = Container;
         });
 
-        Library:AddToRegistry(DropdownOuter, {
+Library:AddToRegistry(DropdownOuter, {
             BorderColor3 = 'Black';
         });
 
-        local DropdownInner = Library:Create('Frame', {
-            BackgroundColor3 = Library.MainColor;
-            BorderColor3 = Library.OutlineColor;
-            BorderMode = Enum.BorderMode.Inset;
-            Size = UDim2.new(1, 0, 1, 0);
-            ZIndex = 6;
-            Parent = DropdownOuter;
+        Library:AddToRegistry(DropdownInner, {
+            BackgroundColor3 = 'MainColor';
+            BorderColor3 = 'OutlineColor';
         });
 
-        Library:AddToRegistry(DropdownInner, {
+        Library:AddToRegistry(Scrolling, {
+            ScrollBarImageColor3 = 'AccentColor';
+        });
+
+        Library:AddToRegistry(ListInner, {
             BackgroundColor3 = 'MainColor';
             BorderColor3 = 'OutlineColor';
         });
