@@ -44,7 +44,8 @@ local Library = {
 
 local Hue = 0
 
-table.insert(Library.Signals, RenderStepped:Connect(function(Delta)
+table.insert(Library.Signals, RunService.Heartbeat:Connect(function(Delta)
+    if not Library.MenuVisible then return end
     Hue = Hue + Delta * (1 / 400 * 60)
     if Hue > 1 then Hue = Hue - 1 end
     Library.CurrentRainbowHue = Hue;
@@ -151,6 +152,11 @@ function Library:MakeDraggable(Instance, Cutoff)
 
     local ObjPos = Vector2.zero;
     local MoveConn = nil;
+    local Dragging = false;
+    local CachedSizeX = 0;
+    local CachedSizeY = 0;
+    local CachedAnchorX = 0;
+    local CachedAnchorY = 0;
 
     Instance.InputBegan:Connect(function(Input)
         if Input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -160,15 +166,24 @@ function Library:MakeDraggable(Instance, Cutoff)
             if relY > (Cutoff or 40) then return end;
 
             ObjPos = Vector2.new(relX, relY);
+            -- Cache these so we don't read them every frame during drag
+            CachedSizeX = Instance.Size.X.Offset;
+            CachedSizeY = Instance.Size.Y.Offset;
+            CachedAnchorX = Instance.AnchorPoint.X;
+            CachedAnchorY = Instance.AnchorPoint.Y;
+            Dragging = true;
 
             if not MoveConn then
-                MoveConn = InputService.InputChanged:Connect(function(Inp)
-                    if Inp.UserInputType == Enum.UserInputType.MouseMovement then
-                        Instance.Position = UDim2.new(
-                            0, Mouse.X - ObjPos.X + (Instance.Size.X.Offset * Instance.AnchorPoint.X),
-                            0, Mouse.Y - ObjPos.Y + (Instance.Size.Y.Offset * Instance.AnchorPoint.Y)
-                        );
+                MoveConn = RunService.RenderStepped:Connect(function()
+                    if not Dragging then
+                        MoveConn:Disconnect();
+                        MoveConn = nil;
+                        return;
                     end;
+                    Instance.Position = UDim2.new(
+                        0, Mouse.X - ObjPos.X + (CachedSizeX * CachedAnchorX),
+                        0, Mouse.Y - ObjPos.Y + (CachedSizeY * CachedAnchorY)
+                    );
                 end);
             end;
         end;
@@ -176,10 +191,7 @@ function Library:MakeDraggable(Instance, Cutoff)
 
     Instance.InputEnded:Connect(function(Input)
         if Input.UserInputType == Enum.UserInputType.MouseButton1 then
-            if MoveConn then
-                MoveConn:Disconnect();
-                MoveConn = nil;
-            end;
+            Dragging = false;
         end;
     end);
 end;
@@ -235,7 +247,11 @@ function Library:AddToolTip(InfoStr, HoverInstance)
                 TooltipConn = nil
                 return
             end
-            Tooltip.Position = UDim2.fromOffset(Mouse.X + 15, Mouse.Y + 12)
+            -- Only update position if mouse actually moved (check via Mouse object)
+            local newPos = UDim2.fromOffset(Mouse.X + 15, Mouse.Y + 12)
+            if Tooltip.Position ~= newPos then
+                Tooltip.Position = newPos
+            end
         end)
     end)
 
@@ -3529,26 +3545,41 @@ function Library:CreateWindow(...)
     local Toggled = false;
     local Fading = false;
 
-    -- Предвычисляем кеш прозрачностей один раз после создания GUI
-    local function BuildTransparencyCache()
-        for _, Desc in next, Outer:GetDescendants() do
-            local Cache = TransparencyCache[Desc]
-            if not Cache then
-                Cache = {}
-                TransparencyCache[Desc] = Cache
-            end
+    -- Предвычисляем кеш прозрачностей по чанкам, чтобы не фризить при загрузке
+    local function CacheDescendant(Desc)
+        if not Desc or not Desc.Parent then return end
+        local Cache = TransparencyCache[Desc]
+        if not Cache then
+            Cache = {}
+            TransparencyCache[Desc] = Cache
+        end
+        if Desc:IsA('ImageLabel') then
+            if Cache.ImageTransparency == nil then Cache.ImageTransparency = Desc.ImageTransparency end
+            if Cache.BackgroundTransparency == nil then Cache.BackgroundTransparency = Desc.BackgroundTransparency end
+        elseif Desc:IsA('TextLabel') or Desc:IsA('TextBox') then
+            if Cache.TextTransparency == nil then Cache.TextTransparency = Desc.TextTransparency end
+        elseif Desc:IsA('Frame') or Desc:IsA('ScrollingFrame') then
+            if Cache.BackgroundTransparency == nil then Cache.BackgroundTransparency = Desc.BackgroundTransparency end
+        elseif Desc:IsA('UIStroke') then
+            if Cache.Transparency == nil then Cache.Transparency = Desc.Transparency end
+        end
+    end
 
-            if Desc:IsA('ImageLabel') then
-                if Cache.ImageTransparency == nil then Cache.ImageTransparency = Desc.ImageTransparency end
-                if Cache.BackgroundTransparency == nil then Cache.BackgroundTransparency = Desc.BackgroundTransparency end
-            elseif Desc:IsA('TextLabel') or Desc:IsA('TextBox') then
-                if Cache.TextTransparency == nil then Cache.TextTransparency = Desc.TextTransparency end
-            elseif Desc:IsA('Frame') or Desc:IsA('ScrollingFrame') then
-                if Cache.BackgroundTransparency == nil then Cache.BackgroundTransparency = Desc.BackgroundTransparency end
-            elseif Desc:IsA('UIStroke') then
-                if Cache.Transparency == nil then Cache.Transparency = Desc.Transparency end
+    local function BuildTransparencyCache()
+        local descendants = Outer:GetDescendants()
+        local CHUNK = 50
+        local i = 1
+        local function processChunk()
+            local limit = math.min(i + CHUNK - 1, #descendants)
+            for j = i, limit do
+                CacheDescendant(descendants[j])
+            end
+            i = i + CHUNK
+            if i <= #descendants then
+                task.defer(processChunk)
             end
         end
+        task.defer(processChunk)
     end
 
     -- Собираем кеш сразу после создания окна
@@ -3557,22 +3588,7 @@ function Library:CreateWindow(...)
     -- Обновляем кеш при добавлении новых потомков
     Outer.DescendantAdded:Connect(function(Desc)
         task.defer(function()
-            if not Desc or not Desc.Parent then return end
-            local Cache = TransparencyCache[Desc]
-            if not Cache then
-                Cache = {}
-                TransparencyCache[Desc] = Cache
-            end
-            if Desc:IsA('ImageLabel') then
-                if Cache.ImageTransparency == nil then Cache.ImageTransparency = Desc.ImageTransparency end
-                if Cache.BackgroundTransparency == nil then Cache.BackgroundTransparency = Desc.BackgroundTransparency end
-            elseif Desc:IsA('TextLabel') or Desc:IsA('TextBox') then
-                if Cache.TextTransparency == nil then Cache.TextTransparency = Desc.TextTransparency end
-            elseif Desc:IsA('Frame') or Desc:IsA('ScrollingFrame') then
-                if Cache.BackgroundTransparency == nil then Cache.BackgroundTransparency = Desc.BackgroundTransparency end
-            elseif Desc:IsA('UIStroke') then
-                if Cache.Transparency == nil then Cache.Transparency = Desc.Transparency end
-            end
+            CacheDescendant(Desc)
         end)
     end)
 
@@ -3582,6 +3598,7 @@ function Library:Toggle()
     local FadeTime = Config.MenuFadeTime;
     Fading = true;
     Toggled = not Toggled;
+    Library.MenuVisible = Toggled;
     ModalElement.Modal = Toggled;
 
     if Toggled then
