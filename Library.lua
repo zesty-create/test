@@ -2272,11 +2272,21 @@ do
         });
 
         local function RecalculateListPosition()
-            ListOuter.Position = UDim2.fromOffset(DropdownOuter.AbsolutePosition.X, DropdownOuter.AbsolutePosition.Y + DropdownOuter.Size.Y.Offset + 1);
+            local screenHeight = ScreenGui.AbsoluteSize.Y;
+            local dropBottom = DropdownOuter.AbsolutePosition.Y + DropdownOuter.Size.Y.Offset;
+            local listHeight = ListOuter.AbsoluteSize.Y;
+            if dropBottom + listHeight + 1 > screenHeight then
+                -- not enough space below, open upward
+                ListOuter.Position = UDim2.fromOffset(DropdownOuter.AbsolutePosition.X, DropdownOuter.AbsolutePosition.Y - listHeight - 1);
+            else
+                -- enough space below, open downward
+                ListOuter.Position = UDim2.fromOffset(DropdownOuter.AbsolutePosition.X, dropBottom + 1);
+            end;
         end;
 
         local function RecalculateListSize(YSize)
             ListOuter.Size = UDim2.fromOffset(DropdownOuter.AbsoluteSize.X, YSize or (MAX_DROPDOWN_ITEMS * 20 + 2))
+            RecalculateListPosition();
         end;
 
         RecalculateListPosition();
@@ -2490,6 +2500,7 @@ do
         end;
 
         function Dropdown:OpenDropdown()
+            RecalculateListPosition();
             ListOuter.Visible = true;
             Library.OpenedFrames[ListOuter] = true;
             DropdownArrow.Rotation = 180;
