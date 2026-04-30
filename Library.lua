@@ -2204,20 +2204,20 @@ do
             Parent = Container;
         });
 
-Library:AddToRegistry(DropdownOuter, {
+        Library:AddToRegistry(DropdownOuter, {
             BorderColor3 = 'Black';
         });
 
+        local DropdownInner = Library:Create('Frame', {
+            BackgroundColor3 = Library.MainColor;
+            BorderColor3 = Library.OutlineColor;
+            BorderMode = Enum.BorderMode.Inset;
+            Size = UDim2.new(1, 0, 1, 0);
+            ZIndex = 6;
+            Parent = DropdownOuter;
+        });
+
         Library:AddToRegistry(DropdownInner, {
-            BackgroundColor3 = 'MainColor';
-            BorderColor3 = 'OutlineColor';
-        });
-
-        Library:AddToRegistry(Scrolling, {
-            ScrollBarImageColor3 = 'AccentColor';
-        });
-
-        Library:AddToRegistry(ListInner, {
             BackgroundColor3 = 'MainColor';
             BorderColor3 = 'OutlineColor';
         });
@@ -2282,43 +2282,17 @@ Library:AddToRegistry(DropdownOuter, {
         RecalculateListPosition();
         RecalculateListSize();
 
-        local DropdownOuter = Library:Create('Frame', {
-            BackgroundColor3 = Color3.new(0, 0, 0);
-            BorderColor3 = Color3.new(0, 0, 0);
-            Size = UDim2.new(1, -4, 0, 20);
-            ZIndex = 5;
-            Parent = Container;
-        });
-
-        Library:AddToRegistry(DropdownOuter, {
-            BorderColor3 = 'Black';
-        });
-
-        local function RecalculateListPosition()
-            ListOuter.Position = UDim2.fromOffset(DropdownOuter.AbsolutePosition.X, DropdownOuter.AbsolutePosition.Y + DropdownOuter.Size.Y.Offset + 1);
-        end;
-
-        local function RecalculateListSize(YSize)
-            ListOuter.Size = UDim2.fromOffset(DropdownOuter.AbsoluteSize.X, YSize or (MAX_DROPDOWN_ITEMS * 20 + 2))
-        end;
-
-        RecalculateListPosition();
-        RecalculateListSize();
-
         DropdownOuter:GetPropertyChangedSignal('AbsolutePosition'):Connect(RecalculateListPosition);
 
-        DropdownOuter:GetPropertyChangedSignal('AbsolutePosition'):Connect(function()
-            local ParentScroll = DropdownOuter:FindFirstAncestorWhichIsA('ScrollingFrame')
-            if ParentScroll and ListOuter.Visible then
-                local DropPos = DropdownOuter.AbsolutePosition
-                local DropSize = DropdownOuter.AbsoluteSize
-                local ScrollPos = ParentScroll.AbsolutePosition
-                local ScrollSize = ParentScroll.AbsoluteSize
-                if DropPos.Y < ScrollPos.Y or DropPos.Y + DropSize.Y > ScrollPos.Y + ScrollSize.Y then
-                    Dropdown:CloseDropdown()
-                end
-            end
-        end)
+        local ListInner = Library:Create('Frame', {
+            BackgroundColor3 = Library.MainColor;
+            BorderColor3 = Library.OutlineColor;
+            BorderMode = Enum.BorderMode.Inset;
+            BorderSizePixel = 0;
+            Size = UDim2.new(1, 0, 1, 0);
+            ZIndex = 21;
+            Parent = ListOuter;
+        });
 
         Library:AddToRegistry(ListInner, {
             BackgroundColor3 = 'MainColor';
@@ -3160,6 +3134,21 @@ function Library:CreateWindow(...)
             ZIndex = 2;
             Parent = TabFrame;
         });
+
+        DropdownOuter:GetPropertyChangedSignal('AbsolutePosition'):Connect(RecalculateListPosition);
+
+        DropdownOuter:GetPropertyChangedSignal('AbsolutePosition'):Connect(function()
+    local ParentScroll = DropdownOuter:FindFirstAncestorWhichIsA('ScrollingFrame')
+    if ParentScroll and ListOuter.Visible then
+        local DropPos = DropdownOuter.AbsolutePosition
+        local DropSize = DropdownOuter.AbsoluteSize
+        local ScrollPos = ParentScroll.AbsolutePosition
+        local ScrollSize = ParentScroll.AbsoluteSize
+        if DropPos.Y < ScrollPos.Y or DropPos.Y + DropSize.Y > ScrollPos.Y + ScrollSize.Y then
+            Dropdown:CloseDropdown()
+        end
+    end
+end)
 
         Library:Create('UIListLayout', {
             Padding = UDim.new(0, 8);
