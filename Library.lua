@@ -2298,6 +2298,17 @@ end;
         RecalculateListSize();
 
         DropdownOuter:GetPropertyChangedSignal('AbsolutePosition'):Connect(RecalculateListPosition);
+DropdownOuter:GetPropertyChangedSignal('AbsoluteSize'):Connect(RecalculateListPosition);
+
+task.spawn(function()
+    local Parent = DropdownOuter.Parent
+    while Parent do
+        if Parent:IsA('ScrollingFrame') then
+            Parent:GetPropertyChangedSignal('CanvasPosition'):Connect(RecalculateListPosition)
+        end
+        Parent = Parent.Parent
+    end
+end)
 
         local ListInner = Library:Create('Frame', {
             BackgroundColor3 = Library.MainColor;
