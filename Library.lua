@@ -42,24 +42,13 @@ local Library = {
     ScreenGui = ScreenGui;
 };
 
-local RainbowStep = 0
 local Hue = 0
 
 table.insert(Library.Signals, RenderStepped:Connect(function(Delta)
-    RainbowStep = RainbowStep + Delta
-
-    if RainbowStep >= (1 / 60) then
-        RainbowStep = 0
-
-        Hue = Hue + (1 / 400);
-
-        if Hue > 1 then
-            Hue = 0;
-        end;
-
-        Library.CurrentRainbowHue = Hue;
-        Library.CurrentRainbowColor = Color3.fromHSV(Hue, 0.8, 1);
-    end
+    Hue = Hue + Delta * (1 / 400 * 60)
+    if Hue > 1 then Hue = Hue - 1 end
+    Library.CurrentRainbowHue = Hue;
+    Library.CurrentRainbowColor = Color3.fromHSV(Hue, 0.8, 1);
 end))
 
 local function GetPlayersString()
@@ -160,38 +149,37 @@ end;
 function Library:MakeDraggable(Instance, Cutoff)
     Instance.Active = true;
 
-    local Dragging = false;
     local ObjPos = Vector2.zero;
+    local MoveConn = nil;
 
     Instance.InputBegan:Connect(function(Input)
         if Input.UserInputType == Enum.UserInputType.MouseButton1 then
-            ObjPos = Vector2.new(
-                Mouse.X - Instance.AbsolutePosition.X,
-                Mouse.Y - Instance.AbsolutePosition.Y
-            );
+            local relX = Mouse.X - Instance.AbsolutePosition.X;
+            local relY = Mouse.Y - Instance.AbsolutePosition.Y;
 
-            if ObjPos.Y > (Cutoff or 40) then
-                return;
+            if relY > (Cutoff or 40) then return end;
+
+            ObjPos = Vector2.new(relX, relY);
+
+            if not MoveConn then
+                MoveConn = InputService.InputChanged:Connect(function(Inp)
+                    if Inp.UserInputType == Enum.UserInputType.MouseMovement then
+                        Instance.Position = UDim2.new(
+                            0, Mouse.X - ObjPos.X + (Instance.Size.X.Offset * Instance.AnchorPoint.X),
+                            0, Mouse.Y - ObjPos.Y + (Instance.Size.Y.Offset * Instance.AnchorPoint.Y)
+                        );
+                    end;
+                end);
             end;
-
-            Dragging = true;
         end;
     end);
 
     Instance.InputEnded:Connect(function(Input)
         if Input.UserInputType == Enum.UserInputType.MouseButton1 then
-            Dragging = false;
-        end;
-    end);
-
-    InputService.InputChanged:Connect(function(Input)
-        if Dragging and Input.UserInputType == Enum.UserInputType.MouseMovement then
-            Instance.Position = UDim2.new(
-                0,
-                Mouse.X - ObjPos.X + (Instance.Size.X.Offset * Instance.AnchorPoint.X),
-                0,
-                Mouse.Y - ObjPos.Y + (Instance.Size.Y.Offset * Instance.AnchorPoint.Y)
-            );
+            if MoveConn then
+                MoveConn:Disconnect();
+                MoveConn = nil;
+            end;
         end;
     end);
 end;
@@ -231,21 +219,24 @@ function Library:AddToolTip(InfoStr, HoverInstance)
     });
 
     local IsHovering = false
+    local TooltipConn = nil
 
     HoverInstance.MouseEnter:Connect(function()
-        if Library:MouseIsOverOpenedFrame() then
-            return
-        end
+        if Library:MouseIsOverOpenedFrame() then return end
 
         IsHovering = true
-
         Tooltip.Position = UDim2.fromOffset(Mouse.X + 15, Mouse.Y + 12)
         Tooltip.Visible = true
 
-        while IsHovering do
-            RunService.Heartbeat:Wait()
+        if TooltipConn then TooltipConn:Disconnect() end
+        TooltipConn = RunService.Heartbeat:Connect(function()
+            if not IsHovering then
+                TooltipConn:Disconnect()
+                TooltipConn = nil
+                return
+            end
             Tooltip.Position = UDim2.fromOffset(Mouse.X + 15, Mouse.Y + 12)
-        end
+        end)
     end)
 
     HoverInstance.MouseLeave:Connect(function()
@@ -3538,14 +3529,59 @@ function Library:CreateWindow(...)
     local Toggled = false;
     local Fading = false;
 
+    -- Предвычисляем кеш прозрачностей один раз после создания GUI
+    local function BuildTransparencyCache()
+        for _, Desc in next, Outer:GetDescendants() do
+            local Cache = TransparencyCache[Desc]
+            if not Cache then
+                Cache = {}
+                TransparencyCache[Desc] = Cache
+            end
+
+            if Desc:IsA('ImageLabel') then
+                if Cache.ImageTransparency == nil then Cache.ImageTransparency = Desc.ImageTransparency end
+                if Cache.BackgroundTransparency == nil then Cache.BackgroundTransparency = Desc.BackgroundTransparency end
+            elseif Desc:IsA('TextLabel') or Desc:IsA('TextBox') then
+                if Cache.TextTransparency == nil then Cache.TextTransparency = Desc.TextTransparency end
+            elseif Desc:IsA('Frame') or Desc:IsA('ScrollingFrame') then
+                if Cache.BackgroundTransparency == nil then Cache.BackgroundTransparency = Desc.BackgroundTransparency end
+            elseif Desc:IsA('UIStroke') then
+                if Cache.Transparency == nil then Cache.Transparency = Desc.Transparency end
+            end
+        end
+    end
+
+    -- Собираем кеш сразу после создания окна
+    task.defer(BuildTransparencyCache)
+
+    -- Обновляем кеш при добавлении новых потомков
+    Outer.DescendantAdded:Connect(function(Desc)
+        task.defer(function()
+            if not Desc or not Desc.Parent then return end
+            local Cache = TransparencyCache[Desc]
+            if not Cache then
+                Cache = {}
+                TransparencyCache[Desc] = Cache
+            end
+            if Desc:IsA('ImageLabel') then
+                if Cache.ImageTransparency == nil then Cache.ImageTransparency = Desc.ImageTransparency end
+                if Cache.BackgroundTransparency == nil then Cache.BackgroundTransparency = Desc.BackgroundTransparency end
+            elseif Desc:IsA('TextLabel') or Desc:IsA('TextBox') then
+                if Cache.TextTransparency == nil then Cache.TextTransparency = Desc.TextTransparency end
+            elseif Desc:IsA('Frame') or Desc:IsA('ScrollingFrame') then
+                if Cache.BackgroundTransparency == nil then Cache.BackgroundTransparency = Desc.BackgroundTransparency end
+            elseif Desc:IsA('UIStroke') then
+                if Cache.Transparency == nil then Cache.Transparency = Desc.Transparency end
+            end
+        end)
+    end)
+
 function Library:Toggle()
-    if Fading then
-        return;
-    end;
+    if Fading then return end;
 
     local FadeTime = Config.MenuFadeTime;
     Fading = true;
-    Toggled = (not Toggled);
+    Toggled = not Toggled;
     ModalElement.Modal = Toggled;
 
     if Toggled then
@@ -3554,44 +3590,38 @@ function Library:Toggle()
         InputService.MouseBehavior = Enum.MouseBehavior.Default;
     end;
 
-    for _, Desc in next, Outer:GetDescendants() do
-        local Properties = {};
+    -- Собираем только нужные объекты из кеша (не вызываем GetDescendants каждый раз)
+    local tweenInfo = TweenInfo.new(FadeTime, Enum.EasingStyle.Linear)
+    local Props = {
+        ImageLabel    = { 'ImageTransparency', 'BackgroundTransparency' },
+        TextLabel     = { 'TextTransparency' },
+        TextBox       = { 'TextTransparency' },
+        Frame         = { 'BackgroundTransparency' },
+        ScrollingFrame = { 'BackgroundTransparency' },
+        UIStroke      = { 'Transparency' },
+    }
 
-        if Desc:IsA('ImageLabel') then
-            table.insert(Properties, 'ImageTransparency');
-            table.insert(Properties, 'BackgroundTransparency');
-        elseif Desc:IsA('TextLabel') or Desc:IsA('TextBox') then
-            table.insert(Properties, 'TextTransparency');
-        elseif Desc:IsA('Frame') or Desc:IsA('ScrollingFrame') then
-            table.insert(Properties, 'BackgroundTransparency');
-        elseif Desc:IsA('UIStroke') then
-            table.insert(Properties, 'Transparency');
-        end;
+    for Desc, Cache in next, TransparencyCache do
+        if not Desc or not Desc.Parent then continue end
 
-        local Cache = TransparencyCache[Desc];
+        local className = Desc.ClassName
+        local propList = Props[className]
+        if not propList then continue end
 
-        if (not Cache) then
-            Cache = {};
-            TransparencyCache[Desc] = Cache;
-        end;
+        local tweenProps = {}
+        for _, Prop in next, propList do
+            local cached = Cache[Prop]
+            if cached == nil or cached == 1 then continue end
+            tweenProps[Prop] = Toggled and cached or 1
+        end
 
-        for _, Prop in next, Properties do
-            if not Cache[Prop] then
-                Cache[Prop] = Desc[Prop];
-            end;
-
-            if Cache[Prop] == 1 then
-                continue;
-            end;
-
-            TweenService:Create(Desc, TweenInfo.new(FadeTime, Enum.EasingStyle.Linear), { [Prop] = Toggled and Cache[Prop] or 1 }):Play();
-        end;
-    end;
+        if next(tweenProps) then
+            TweenService:Create(Desc, tweenInfo, tweenProps):Play();
+        end
+    end
 
     task.wait(FadeTime);
-
     Outer.Visible = Toggled;
-
     Fading = false;
 end;
 
