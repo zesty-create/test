@@ -979,12 +979,14 @@ do
 
         Library:GiveSignal(InputService.InputBegan:Connect(function(Input)
             if Input.UserInputType == Enum.UserInputType.MouseButton1 then
-                local AbsPos, AbsSize = PickerFrameOuter.AbsolutePosition, PickerFrameOuter.AbsoluteSize;
+                if PickerFrameOuter.Visible then
+                    local AbsPos, AbsSize = PickerFrameOuter.AbsolutePosition, PickerFrameOuter.AbsoluteSize;
 
-                if Mouse.X < AbsPos.X or Mouse.X > AbsPos.X + AbsSize.X
-                    or Mouse.Y < (AbsPos.Y - 20 - 1) or Mouse.Y > AbsPos.Y + AbsSize.Y then
+                    if Mouse.X < AbsPos.X or Mouse.X > AbsPos.X + AbsSize.X
+                        or Mouse.Y < (AbsPos.Y - 20 - 1) or Mouse.Y > AbsPos.Y + AbsSize.Y then
 
-                    ColorPicker:Hide();
+                        ColorPicker:Hide();
+                    end;
                 end;
 
                 if not Library:IsMouseOverFrame(ContextMenu.Container) then
@@ -3506,6 +3508,10 @@ function Library:CreateWindow(...)
 
         TabButton.InputBegan:Connect(function(Input)
             if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+                for Frame, _ in next, Library.OpenedFrames do
+                    Frame.Visible = false;
+                end;
+                table.clear(Library.OpenedFrames);
                 Tab:ShowTab();
             end;
         end);
