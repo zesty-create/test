@@ -2263,7 +2263,7 @@ do
 
         local MAX_DROPDOWN_ITEMS = 8;
 
-        local ListOuter = Library:Create('Frame', {
+local ListOuter = Library:Create('Frame', {
             BackgroundColor3 = Color3.new(0, 0, 0);
             BorderColor3 = Color3.new(0, 0, 0);
             ZIndex = 20;
@@ -2271,24 +2271,10 @@ do
             Parent = ScreenGui;
         });
 
-        local function RecalculateListPosition()
-            ListOuter.Position = UDim2.fromOffset(DropdownOuter.AbsolutePosition.X, DropdownOuter.AbsolutePosition.Y + DropdownOuter.Size.Y.Offset + 1);
-        end;
-
-        local function RecalculateListSize(YSize)
-            ListOuter.Size = UDim2.fromOffset(DropdownOuter.AbsoluteSize.X, YSize or (MAX_DROPDOWN_ITEMS * 20 + 2))
-        end;
-
-        RecalculateListPosition();
-        RecalculateListSize();
-
-        DropdownOuter:GetPropertyChangedSignal('AbsolutePosition'):Connect(RecalculateListPosition);
-
         local ListInner = Library:Create('Frame', {
             BackgroundColor3 = Library.MainColor;
             BorderColor3 = Library.OutlineColor;
             BorderMode = Enum.BorderMode.Inset;
-            BorderSizePixel = 0;
             Size = UDim2.new(1, 0, 1, 0);
             ZIndex = 21;
             Parent = ListOuter;
@@ -2306,17 +2292,11 @@ do
             Size = UDim2.new(1, 0, 1, 0);
             ZIndex = 21;
             Parent = ListInner;
-
-            TopImage = 'rbxasset://textures/ui/Scroll/scroll-middle.png',
-            BottomImage = 'rbxasset://textures/ui/Scroll/scroll-middle.png',
-
-            ScrollBarThickness = 3,
-            ScrollBarImageColor3 = Library.AccentColor,
+            ScrollBarThickness = 3;
+            ScrollBarImageColor3 = Library.AccentColor;
+            TopImage = 'rbxasset://textures/ui/Scroll/scroll-middle.png';
+            BottomImage = 'rbxasset://textures/ui/Scroll/scroll-middle.png';
         });
-
-        Library:AddToRegistry(Scrolling, {
-            ScrollBarImageColor3 = 'AccentColor'
-        })
 
         Library:Create('UIListLayout', {
             Padding = UDim.new(0, 0);
@@ -2325,176 +2305,50 @@ do
             Parent = Scrolling;
         });
 
-        function Dropdown:Display()
-            local Values = Dropdown.Values;
-            local Str = '';
+        Library:AddToRegistry(Scrolling, { ScrollBarImageColor3 = 'AccentColor' });
 
-            if Info.Multi then
-                for Idx, Value in next, Values do
-                    if Dropdown.Value[Value] then
-                        Str = Str .. Value .. ', ';
-                    end;
-                end;
+        local MAX_DROPDOWN_ITEMS = 8;
 
-                Str = Str:sub(1, #Str - 2);
+        local function UpdateDropdownPosition()
+            if not DropdownOuter or not ListOuter then return end
+
+            local DropdownPos = DropdownOuter.AbsolutePosition
+            local DropdownSize = DropdownOuter.AbsoluteSize
+            local ScreenSize = workspace.CurrentCamera.ViewportSize
+
+            local ListHeight = math.clamp(#Dropdown.Values * 20 + 2, 0, MAX_DROPDOWN_ITEMS * 20 + 2)
+
+            local SpaceBelow = ScreenSize.Y - (DropdownPos.Y + DropdownSize.Y + 4)
+            local SpaceAbove = DropdownPos.Y - 4
+
+            local ShouldOpenUp = SpaceBelow < ListHeight and SpaceAbove > SpaceBelow
+
+            if ShouldOpenUp then
+                ListOuter.Position = UDim2.fromOffset(DropdownPos.X, DropdownPos.Y - ListHeight - 2)
             else
-                Str = Dropdown.Value or '';
-            end;
+                ListOuter.Position = UDim2.fromOffset(DropdownPos.X, DropdownPos.Y + DropdownSize.Y + 2)
+            end
 
-            ItemList.Text = (Str == '' and '--' or Str);
-        end;
+            ListOuter.Size = UDim2.fromOffset(DropdownOuter.AbsoluteSize.X, ListHeight)
+        end
 
-        function Dropdown:GetActiveValues()
-            if Info.Multi then
-                local T = {};
+        DropdownOuter:GetPropertyChangedSignal('AbsolutePosition'):Connect(UpdateDropdownPosition)
+        DropdownOuter:GetPropertyChangedSignal('AbsoluteSize'):Connect(UpdateDropdownPosition)
 
-                for Value, Bool in next, Dropdown.Value do
-                    table.insert(T, Value);
-                end;
-
-                return T;
-            else
-                return Dropdown.Value and 1 or 0;
-            end;
-        end;
-
-        function Dropdown:BuildDropdownList()
-            local Values = Dropdown.Values;
-            local Buttons = {};
-
-            for _, Element in next, Scrolling:GetChildren() do
-                if not Element:IsA('UIListLayout') then
-                    Element:Destroy();
-                end;
-            end;
-
-            local Count = 0;
-
-            for Idx, Value in next, Values do
-                local Table = {};
-
-                Count = Count + 1;
-
-                local Button = Library:Create('Frame', {
-                    BackgroundColor3 = Library.MainColor;
-                    BorderColor3 = Library.OutlineColor;
-                    BorderMode = Enum.BorderMode.Middle;
-                    Size = UDim2.new(1, -1, 0, 20);
-                    ZIndex = 23;
-                    Active = true,
-                    Parent = Scrolling;
-                });
-
-                Library:AddToRegistry(Button, {
-                    BackgroundColor3 = 'MainColor';
-                    BorderColor3 = 'OutlineColor';
-                });
-
-                local ButtonLabel = Library:CreateLabel({
-                    Active = false;
-                    Size = UDim2.new(1, -6, 1, 0);
-                    Position = UDim2.new(0, 6, 0, 0);
-                    TextSize = 14;
-                    Text = Value;
-                    TextXAlignment = Enum.TextXAlignment.Left;
-                    ZIndex = 25;
-                    Parent = Button;
-                });
-
-                Library:OnHighlight(Button, Button,
-                    { BorderColor3 = 'AccentColor', ZIndex = 24 },
-                    { BorderColor3 = 'OutlineColor', ZIndex = 23 }
-                );
-
-                local Selected;
-
-                if Info.Multi then
-                    Selected = Dropdown.Value[Value];
-                else
-                    Selected = Dropdown.Value == Value;
-                end;
-
-                function Table:UpdateButton()
-                    if Info.Multi then
-                        Selected = Dropdown.Value[Value];
-                    else
-                        Selected = Dropdown.Value == Value;
-                    end;
-
-                    ButtonLabel.TextColor3 = Selected and Library.AccentColor or Library.FontColor;
-                    Library.RegistryMap[ButtonLabel].Properties.TextColor3 = Selected and 'AccentColor' or 'FontColor';
-                end;
-
-                ButtonLabel.InputBegan:Connect(function(Input)
-                    if Input.UserInputType == Enum.UserInputType.MouseButton1 then
-                        local Try = not Selected;
-
-                        if Dropdown:GetActiveValues() == 1 and (not Try) and (not Info.AllowNull) then
-                        else
-                            if Info.Multi then
-                                Selected = Try;
-
-                                if Selected then
-                                    Dropdown.Value[Value] = true;
-                                else
-                                    Dropdown.Value[Value] = nil;
-                                end;
-                            else
-                                Selected = Try;
-
-                                if Selected then
-                                    Dropdown.Value = Value;
-                                else
-                                    Dropdown.Value = nil;
-                                end;
-
-                                for _, OtherButton in next, Buttons do
-                                    OtherButton:UpdateButton();
-                                end;
-                            end;
-
-                            Table:UpdateButton();
-                            Dropdown:Display();
-
-                            Library:SafeCallback(Dropdown.Callback, Dropdown.Value);
-                            Library:SafeCallback(Dropdown.Changed, Dropdown.Value);
-
-                            Library:AttemptSave();
-                        end;
-                    end;
-                end);
-
-                Table:UpdateButton();
-                Dropdown:Display();
-
-                Buttons[Button] = Table;
-            end;
-
-            Scrolling.CanvasSize = UDim2.fromOffset(0, (Count * 20) + 1);
-
-            local Y = math.clamp(Count * 20, 0, MAX_DROPDOWN_ITEMS * 20) + 1;
-            RecalculateListSize(Y);
-        end;
-
-        function Dropdown:SetValues(NewValues)
-            if NewValues then
-                Dropdown.Values = NewValues;
-            end;
-
-            Dropdown:BuildDropdownList();
-        end;
-
+        local OldOpenDropdown = Dropdown.OpenDropdown
         function Dropdown:OpenDropdown()
-            ListOuter.Visible = true;
-            Library.OpenedFrames[ListOuter] = true;
-            DropdownArrow.Rotation = 180;
-        end;
+            UpdateDropdownPosition()
+            ListOuter.Visible = true
+            Library.OpenedFrames[ListOuter] = true
+            DropdownArrow.Rotation = 180
+        end
 
+        local OldCloseDropdown = Dropdown.CloseDropdown
         function Dropdown:CloseDropdown()
-            ListOuter.Visible = false;
-            Library.OpenedFrames[ListOuter] = nil;
-            DropdownArrow.Rotation = 0;
-        end;
+            ListOuter.Visible = false
+            Library.OpenedFrames[ListOuter] = nil
+            DropdownArrow.Rotation = 0
+        end
 
         function Dropdown:OnChanged(Func)
             Dropdown.Changed = Func;
@@ -3134,21 +2988,6 @@ function Library:CreateWindow(...)
             ZIndex = 2;
             Parent = TabFrame;
         });
-
-        DropdownOuter:GetPropertyChangedSignal('AbsolutePosition'):Connect(RecalculateListPosition);
-
-        DropdownOuter:GetPropertyChangedSignal('AbsolutePosition'):Connect(function()
-    local ParentScroll = DropdownOuter:FindFirstAncestorWhichIsA('ScrollingFrame')
-    if ParentScroll and ListOuter.Visible then
-        local DropPos = DropdownOuter.AbsolutePosition
-        local DropSize = DropdownOuter.AbsoluteSize
-        local ScrollPos = ParentScroll.AbsolutePosition
-        local ScrollSize = ParentScroll.AbsoluteSize
-        if DropPos.Y < ScrollPos.Y or DropPos.Y + DropSize.Y > ScrollPos.Y + ScrollSize.Y then
-            Dropdown:CloseDropdown()
-        end
-    end
-end)
 
         Library:Create('UIListLayout', {
             Padding = UDim.new(0, 8);
