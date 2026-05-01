@@ -159,15 +159,14 @@ function Library:MakeDraggable(Instance, Cutoff)
     Instance.Active = true;
 
     local Dragging = false;
-    local ObjPos = Vector2.zero;
+    local offX, offY = 0, 0;
     local _cutoff = Cutoff or 40;
 
-    -- Cache anchor offsets once; recalculate only if size changes
-    local _anchorOffX = 0;
-    local _anchorOffY = 0;
+    -- Cache anchor offsets; recalculate only on Size change
+    local ancX, ancY = 0, 0;
     local function _cacheAnchor()
-        _anchorOffX = Instance.Size.X.Offset * Instance.AnchorPoint.X;
-        _anchorOffY = Instance.Size.Y.Offset * Instance.AnchorPoint.Y;
+        ancX = Instance.Size.X.Offset * Instance.AnchorPoint.X;
+        ancY = Instance.Size.Y.Offset * Instance.AnchorPoint.Y;
     end
     _cacheAnchor();
     Instance:GetPropertyChangedSignal('Size'):Connect(_cacheAnchor);
@@ -175,12 +174,10 @@ function Library:MakeDraggable(Instance, Cutoff)
     Instance.InputBegan:Connect(function(Input)
         if Input.UserInputType == Enum.UserInputType.MouseButton1 then
             local absPos = Instance.AbsolutePosition;
-            local offX = Mouse.X - absPos.X;
-            local offY = Mouse.Y - absPos.Y;
-
-            if offY > _cutoff then return end;
-
-            ObjPos = Vector2.new(offX, offY);
+            local dy = Mouse.Y - absPos.Y;
+            if dy > _cutoff then return end;
+            offX = Mouse.X - absPos.X;
+            offY = dy;
             Dragging = true;
         end;
     end);
@@ -191,14 +188,14 @@ function Library:MakeDraggable(Instance, Cutoff)
         end;
     end);
 
-    InputService.InputChanged:Connect(function(Input)
-        if Dragging and Input.UserInputType == Enum.UserInputType.MouseMovement then
-            Instance.Position = UDim2.fromOffset(
-                Mouse.X - ObjPos.X + _anchorOffX,
-                Mouse.Y - ObjPos.Y + _anchorOffY
-            );
-        end;
-    end);
+    -- RenderStepped: exactly 1 position write per frame, zero event storm
+    Library:GiveSignal(RenderStepped:Connect(function()
+        if not Dragging then return end;
+        Instance.Position = UDim2.fromOffset(
+            Mouse.X - offX + ancX,
+            Mouse.Y - offY + ancY
+        );
+    end));
 end;
 
 function Library:AddToolTip(InfoStr, HoverInstance)
@@ -260,11 +257,12 @@ function Library:AddToolTip(InfoStr, HoverInstance)
 end
 
 function Library:OnHighlight(HighlightInstance, Instance, Properties, PropertiesDefault)
+    local lib = Library;
     HighlightInstance.MouseEnter:Connect(function()
-        local Reg = Library.RegistryMap[Instance];
+        local Reg = lib.RegistryMap[Instance];
 
         for Property, ColorIdx in next, Properties do
-            Instance[Property] = Library[ColorIdx] or ColorIdx;
+            Instance[Property] = lib[ColorIdx] or ColorIdx;
 
             if Reg and Reg.Properties[Property] then
                 Reg.Properties[Property] = ColorIdx;
@@ -273,10 +271,10 @@ function Library:OnHighlight(HighlightInstance, Instance, Properties, Properties
     end)
 
     HighlightInstance.MouseLeave:Connect(function()
-        local Reg = Library.RegistryMap[Instance];
+        local Reg = lib.RegistryMap[Instance];
 
         for Property, ColorIdx in next, PropertiesDefault do
-            Instance[Property] = Library[ColorIdx] or ColorIdx;
+            Instance[Property] = lib[ColorIdx] or ColorIdx;
 
             if Reg and Reg.Properties[Property] then
                 Reg.Properties[Property] = ColorIdx;
@@ -286,11 +284,12 @@ function Library:OnHighlight(HighlightInstance, Instance, Properties, Properties
 end;
 
 function Library:MouseIsOverOpenedFrame()
+    local mx, my = Mouse.X, Mouse.Y;
     for Frame, _ in next, Library.OpenedFrames do
         local AbsPos, AbsSize = Frame.AbsolutePosition, Frame.AbsoluteSize;
 
-        if Mouse.X >= AbsPos.X and Mouse.X <= AbsPos.X + AbsSize.X
-            and Mouse.Y >= AbsPos.Y and Mouse.Y <= AbsPos.Y + AbsSize.Y then
+        if mx >= AbsPos.X and mx <= AbsPos.X + AbsSize.X
+            and my >= AbsPos.Y and my <= AbsPos.Y + AbsSize.Y then
 
             return true;
         end;
@@ -299,22 +298,25 @@ end;
 
 function Library:IsMouseOverFrame(Frame)
     local AbsPos, AbsSize = Frame.AbsolutePosition, Frame.AbsoluteSize;
+    local mx, my = Mouse.X, Mouse.Y;
 
-    if Mouse.X >= AbsPos.X and Mouse.X <= AbsPos.X + AbsSize.X
-        and Mouse.Y >= AbsPos.Y and Mouse.Y <= AbsPos.Y + AbsSize.Y then
+    if mx >= AbsPos.X and mx <= AbsPos.X + AbsSize.X
+        and my >= AbsPos.Y and my <= AbsPos.Y + AbsSize.Y then
 
         return true;
     end;
 end;
 
 function Library:UpdateDependencyBoxes()
-    for _, Depbox in next, Library.DependencyBoxes do
-        Depbox:Update();
+    local db = Library.DependencyBoxes;
+    for i = 1, #db do
+        db[i]:Update();
     end;
 end;
 
 function Library:MapValue(Value, MinA, MaxA, MinB, MaxB)
-    return (1 - ((Value - MinA) / (MaxA - MinA))) * MinB + ((Value - MinA) / (MaxA - MinA)) * MaxB;
+    local t = (Value - MinA) / (MaxA - MinA);
+    return (1 - t) * MinB + t * MaxB;
 end;
 
 function Library:GetTextBounds(Text, Font, Size, Resolution)
@@ -336,11 +338,11 @@ function Library:AddToRegistry(Instance, Properties, IsHud)
         Idx = Idx;
     };
 
-    table.insert(Library.Registry, Data);
+    Library.Registry[Idx] = Data;
     Library.RegistryMap[Instance] = Data;
 
     if IsHud then
-        table.insert(Library.HudRegistry, Data);
+        Library.HudRegistry[#Library.HudRegistry + 1] = Data;
     end;
 end;
 
@@ -367,11 +369,13 @@ end;
 function Library:UpdateColorsUsingRegistry()
     local reg = Library.Registry;
     local lib = Library;
+    local _type = type;
     for i = 1, #reg do
         local Object = reg[i];
         local inst = Object.Instance;
-        for Property, ColorIdx in next, Object.Properties do
-            local t = type(ColorIdx);
+        local props = Object.Properties;
+        for Property, ColorIdx in next, props do
+            local t = _type(ColorIdx);
             if t == 'string' then
                 inst[Property] = lib[ColorIdx];
             elseif t == 'function' then
@@ -383,7 +387,7 @@ end;
 
 function Library:GiveSignal(Signal)
     -- Only used for signals not attached to library instances, as those should be cleaned up on object destruction by Roblox
-    table.insert(Library.Signals, Signal)
+    Library.Signals[#Library.Signals + 1] = Signal
 end
 
 function Library:Unload()
@@ -1254,11 +1258,11 @@ do
                         Text = Text .. '.';
                         DisplayLabel.Text = Text;
 
-                        wait(0.4);
+                        task.wait(0.4);
                     end;
                 end);
 
-                wait(0.2);
+                task.wait(0.2);
 
                 local Event;
                 Event = InputService.InputBegan:Connect(function(Input)
@@ -2949,11 +2953,11 @@ function Library:Notify(Text, Time)
     pcall(NotifyOuter.TweenSize, NotifyOuter, UDim2.new(0, XSize + 8 + 4, 0, YSize), 'Out', 'Quad', 0.4, true);
 
     task.spawn(function()
-        wait(Time or 5);
+        task.wait(Time or 5);
 
         pcall(NotifyOuter.TweenSize, NotifyOuter, UDim2.new(0, 0, 0, YSize), 'Out', 'Quad', 0.4, true);
 
-        wait(0.4);
+        task.wait(0.4);
 
         NotifyOuter:Destroy();
     end);
@@ -3554,18 +3558,22 @@ function Library:Toggle()
         InputService.MouseBehavior = Enum.MouseBehavior.Default;
     end;
 
-    for _, Desc in next, Outer:GetDescendants() do
+    local tweenInfo = TweenInfo.new(FadeTime, Enum.EasingStyle.Linear);
+    local descendants = Outer:GetDescendants();
+
+    for i = 1, #descendants do
+        local Desc = descendants[i];
         local Properties = {};
 
         if Desc:IsA('ImageLabel') then
-            table.insert(Properties, 'ImageTransparency');
-            table.insert(Properties, 'BackgroundTransparency');
+            Properties[1] = 'ImageTransparency';
+            Properties[2] = 'BackgroundTransparency';
         elseif Desc:IsA('TextLabel') or Desc:IsA('TextBox') then
-            table.insert(Properties, 'TextTransparency');
+            Properties[1] = 'TextTransparency';
         elseif Desc:IsA('Frame') or Desc:IsA('ScrollingFrame') then
-            table.insert(Properties, 'BackgroundTransparency');
+            Properties[1] = 'BackgroundTransparency';
         elseif Desc:IsA('UIStroke') then
-            table.insert(Properties, 'Transparency');
+            Properties[1] = 'Transparency';
         end;
 
         local Cache = TransparencyCache[Desc];
@@ -3575,7 +3583,8 @@ function Library:Toggle()
             TransparencyCache[Desc] = Cache;
         end;
 
-        for _, Prop in next, Properties do
+        for j = 1, #Properties do
+            local Prop = Properties[j];
             if not Cache[Prop] then
                 Cache[Prop] = Desc[Prop];
             end;
@@ -3584,7 +3593,10 @@ function Library:Toggle()
                 continue;
             end;
 
-            TweenService:Create(Desc, TweenInfo.new(FadeTime, Enum.EasingStyle.Linear), { [Prop] = Toggled and Cache[Prop] or 1 }):Play();
+            local target = Toggled and Cache[Prop] or 1;
+            if Desc[Prop] ~= target then
+                TweenService:Create(Desc, tweenInfo, { [Prop] = target }):Play();
+            end;
         end;
     end;
 
