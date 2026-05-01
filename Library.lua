@@ -42,24 +42,19 @@ local Library = {
     ScreenGui = ScreenGui;
 };
 
-local RainbowStep = 0
 local Hue = 0
+local _rainbowAccum = 0
 
-table.insert(Library.Signals, RenderStepped:Connect(function(Delta)
-    RainbowStep = RainbowStep + Delta
+table.insert(Library.Signals, RunService.Heartbeat:Connect(function(Delta)
+    _rainbowAccum = _rainbowAccum + Delta
+    if _rainbowAccum < 0.05 then return end  -- update ~20x/s, not 60x/s
+    _rainbowAccum = 0
 
-    if RainbowStep >= (1 / 60) then
-        RainbowStep = 0
+    Hue = Hue + (1 / 400);
+    if Hue > 1 then Hue = 0 end
 
-        Hue = Hue + (1 / 400);
-
-        if Hue > 1 then
-            Hue = 0;
-        end;
-
-        Library.CurrentRainbowHue = Hue;
-        Library.CurrentRainbowColor = Color3.fromHSV(Hue, 0.8, 1);
-    end
+    Library.CurrentRainbowHue = Hue;
+    Library.CurrentRainbowColor = Color3.fromHSV(Hue, 0.8, 1);
 end))
 
 local function GetPlayersString()
@@ -115,11 +110,7 @@ function Library:AttemptSave()
 end;
 
 function Library:Create(Class, Properties)
-    local _Instance = Class;
-
-    if type(Class) == 'string' then
-        _Instance = Instance.new(Class);
-    end;
+    local _Instance = type(Class) == 'string' and Instance.new(Class) or Class;
 
     for Property, Value in next, Properties do
         _Instance[Property] = Value;
@@ -140,21 +131,28 @@ function Library:ApplyTextStroke(Inst)
 end;
 
 function Library:CreateLabel(Properties, IsHud)
-    local _Instance = Library:Create('TextLabel', {
-        BackgroundTransparency = 1;
-        Font = Library.Font;
-        TextColor3 = Library.FontColor;
-        TextSize = 16;
-        TextStrokeTransparency = 0;
-    });
+    local _Instance = Instance.new('TextLabel');
+    _Instance.BackgroundTransparency = 1;
+    _Instance.Font = Library.Font;
+    _Instance.TextColor3 = Library.FontColor;
+    _Instance.TextSize = 16;
+    _Instance.TextStrokeTransparency = 1;  -- UIStroke handles the stroke
 
-    Library:ApplyTextStroke(_Instance);
+    -- Apply UIStroke inline (avoids a second Create() call)
+    local _stroke = Instance.new('UIStroke');
+    _stroke.Color = Color3.new(0, 0, 0);
+    _stroke.Thickness = 1;
+    _stroke.LineJoinMode = Enum.LineJoinMode.Miter;
+    _stroke.Parent = _Instance;
 
-    Library:AddToRegistry(_Instance, {
-        TextColor3 = 'FontColor';
-    }, IsHud);
+    Library:AddToRegistry(_Instance, { TextColor3 = 'FontColor' }, IsHud);
 
-    return Library:Create(_Instance, Properties);
+    -- Apply caller properties directly
+    for Prop, Val in next, Properties do
+        _Instance[Prop] = Val;
+    end;
+
+    return _Instance;
 end;
 
 function Library:MakeDraggable(Instance, Cutoff)
@@ -162,18 +160,27 @@ function Library:MakeDraggable(Instance, Cutoff)
 
     local Dragging = false;
     local ObjPos = Vector2.zero;
+    local _cutoff = Cutoff or 40;
+
+    -- Cache anchor offsets once; recalculate only if size changes
+    local _anchorOffX = 0;
+    local _anchorOffY = 0;
+    local function _cacheAnchor()
+        _anchorOffX = Instance.Size.X.Offset * Instance.AnchorPoint.X;
+        _anchorOffY = Instance.Size.Y.Offset * Instance.AnchorPoint.Y;
+    end
+    _cacheAnchor();
+    Instance:GetPropertyChangedSignal('Size'):Connect(_cacheAnchor);
 
     Instance.InputBegan:Connect(function(Input)
         if Input.UserInputType == Enum.UserInputType.MouseButton1 then
-            ObjPos = Vector2.new(
-                Mouse.X - Instance.AbsolutePosition.X,
-                Mouse.Y - Instance.AbsolutePosition.Y
-            );
+            local absPos = Instance.AbsolutePosition;
+            local offX = Mouse.X - absPos.X;
+            local offY = Mouse.Y - absPos.Y;
 
-            if ObjPos.Y > (Cutoff or 40) then
-                return;
-            end;
+            if offY > _cutoff then return end;
 
+            ObjPos = Vector2.new(offX, offY);
             Dragging = true;
         end;
     end);
@@ -186,11 +193,9 @@ function Library:MakeDraggable(Instance, Cutoff)
 
     InputService.InputChanged:Connect(function(Input)
         if Dragging and Input.UserInputType == Enum.UserInputType.MouseMovement then
-            Instance.Position = UDim2.new(
-                0,
-                Mouse.X - ObjPos.X + (Instance.Size.X.Offset * Instance.AnchorPoint.X),
-                0,
-                Mouse.Y - ObjPos.Y + (Instance.Size.Y.Offset * Instance.AnchorPoint.Y)
+            Instance.Position = UDim2.fromOffset(
+                Mouse.X - ObjPos.X + _anchorOffX,
+                Mouse.Y - ObjPos.Y + _anchorOffY
             );
         end;
     end);
@@ -230,27 +235,27 @@ function Library:AddToolTip(InfoStr, HoverInstance)
         TextColor3 = 'FontColor',
     });
 
-    local IsHovering = false
+    local _tooltipConn = nil;
 
     HoverInstance.MouseEnter:Connect(function()
-        if Library:MouseIsOverOpenedFrame() then
-            return
-        end
+        if Library:MouseIsOverOpenedFrame() then return end
 
-        IsHovering = true
+        Tooltip.Position = UDim2.fromOffset(Mouse.X + 15, Mouse.Y + 12);
+        Tooltip.Visible = true;
 
-        Tooltip.Position = UDim2.fromOffset(Mouse.X + 15, Mouse.Y + 12)
-        Tooltip.Visible = true
-
-        while IsHovering do
-            RunService.Heartbeat:Wait()
-            Tooltip.Position = UDim2.fromOffset(Mouse.X + 15, Mouse.Y + 12)
-        end
+        _tooltipConn = InputService.InputChanged:Connect(function(Input)
+            if Input.UserInputType == Enum.UserInputType.MouseMovement then
+                Tooltip.Position = UDim2.fromOffset(Mouse.X + 15, Mouse.Y + 12);
+            end;
+        end);
     end)
 
     HoverInstance.MouseLeave:Connect(function()
-        IsHovering = false
-        Tooltip.Visible = false
+        Tooltip.Visible = false;
+        if _tooltipConn then
+            _tooltipConn:Disconnect();
+            _tooltipConn = nil;
+        end;
     end)
 end
 
@@ -360,23 +365,18 @@ function Library:RemoveFromRegistry(Instance)
 end;
 
 function Library:UpdateColorsUsingRegistry()
-    -- TODO: Could have an 'active' list of objects
-    -- where the active list only contains Visible objects.
-
-    -- IMPL: Could setup .Changed events on the AddToRegistry function
-    -- that listens for the 'Visible' propert being changed.
-    -- Visible: true => Add to active list, and call UpdateColors function
-    -- Visible: false => Remove from active list.
-
-    -- The above would be especially efficient for a rainbow menu color or live color-changing.
-
-    for Idx, Object in next, Library.Registry do
+    local reg = Library.Registry;
+    local lib = Library;
+    for i = 1, #reg do
+        local Object = reg[i];
+        local inst = Object.Instance;
         for Property, ColorIdx in next, Object.Properties do
-            if type(ColorIdx) == 'string' then
-                Object.Instance[Property] = Library[ColorIdx];
-            elseif type(ColorIdx) == 'function' then
-                Object.Instance[Property] = ColorIdx()
-            end
+            local t = type(ColorIdx);
+            if t == 'string' then
+                inst[Property] = lib[ColorIdx];
+            elseif t == 'function' then
+                inst[Property] = ColorIdx();
+            end;
         end;
     end;
 end;
