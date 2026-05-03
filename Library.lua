@@ -11,7 +11,7 @@ local Mouse = LocalPlayer:GetMouse();
 local ScreenGui = Instance.new('ScreenGui');
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global;
 ScreenGui.ResetOnSpawn = false;
-ScreenGui.Parent = LocalPlayer:WaitForChild('PlayerGui');
+ScreenGui.Parent = LocalPlayer:WaitForChild('PlayerGui', 10);
 
 local Toggles = {};
 local Options = {};
