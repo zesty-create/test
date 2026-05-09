@@ -3,7 +3,7 @@ local TextService = game:GetService('TextService');
 local Teams = game:GetService('Teams');
 local Players = game:GetService('Players');
 local RunService = game:GetService('RunService')
-local TweenService = game:GetService('TweenService');
+
 local RenderStepped = RunService.RenderStepped;
 local LocalPlayer = Players.LocalPlayer;
 local Mouse = LocalPlayer:GetMouse();
@@ -26,10 +26,10 @@ local Library = {
     HudRegistry = {};
 
     FontColor = Color3.fromRGB(255, 255, 255);
-    MainColor = Color3.fromRGB(28, 28, 28);
-    BackgroundColor = Color3.fromRGB(20, 20, 20);
-    AccentColor = Color3.fromRGB(0, 85, 255);
-    OutlineColor = Color3.fromRGB(50, 50, 50);
+    MainColor = Color3.fromRGB(36, 36, 36);
+    BackgroundColor = Color3.fromRGB(28, 28, 28);
+    AccentColor = Color3.fromRGB(61, 180, 136);
+    OutlineColor = Color3.fromRGB(55, 55, 55);
     RiskColor = Color3.fromRGB(255, 50, 50);
 
     Black = Color3.new(0, 0, 0);
@@ -2976,7 +2976,6 @@ function Library:CreateWindow(...)
 
     if type(Config.Title) ~= 'string' then Config.Title = 'No title' end
     if type(Config.TabPadding) ~= 'number' then Config.TabPadding = 0 end
-    if type(Config.MenuFadeTime) ~= 'number' then Config.MenuFadeTime = 0.2 end
 
     if typeof(Config.Position) ~= 'UDim2' then Config.Position = UDim2.fromOffset(175, 50) end
     if typeof(Config.Size) ~= 'UDim2' then Config.Size = UDim2.fromOffset(550, 600) end
@@ -3538,73 +3537,17 @@ function Library:CreateWindow(...)
         Parent = ScreenGui;
     });
 
-    local TransparencyCache = {};
     local Toggled = false;
-    local Fading = false;
 
 function Library:Toggle()
-    if Fading then
-        return;
-    end;
-
-    local FadeTime = Config.MenuFadeTime;
-    Fading = true;
-    Toggled = (not Toggled);
+    Toggled = not Toggled;
     ModalElement.Modal = Toggled;
+    Outer.Visible = Toggled;
 
     if Toggled then
-        Outer.Visible = true;
         InputService.MouseIconEnabled = true;
         InputService.MouseBehavior = Enum.MouseBehavior.Default;
     end;
-
-    local tweenInfo = TweenInfo.new(FadeTime, Enum.EasingStyle.Linear);
-    local descendants = Outer:GetDescendants();
-
-    for i = 1, #descendants do
-        local Desc = descendants[i];
-        local Properties = {};
-
-        if Desc:IsA('ImageLabel') then
-            Properties[1] = 'ImageTransparency';
-            Properties[2] = 'BackgroundTransparency';
-        elseif Desc:IsA('TextLabel') or Desc:IsA('TextBox') then
-            Properties[1] = 'TextTransparency';
-        elseif Desc:IsA('Frame') or Desc:IsA('ScrollingFrame') then
-            Properties[1] = 'BackgroundTransparency';
-        elseif Desc:IsA('UIStroke') then
-            Properties[1] = 'Transparency';
-        end;
-
-        local Cache = TransparencyCache[Desc];
-
-        if (not Cache) then
-            Cache = {};
-            TransparencyCache[Desc] = Cache;
-        end;
-
-        for j = 1, #Properties do
-            local Prop = Properties[j];
-            if not Cache[Prop] then
-                Cache[Prop] = Desc[Prop];
-            end;
-
-            if Cache[Prop] == 1 then
-                continue;
-            end;
-
-            local target = Toggled and Cache[Prop] or 1;
-            if Desc[Prop] ~= target then
-                TweenService:Create(Desc, tweenInfo, { [Prop] = target }):Play();
-            end;
-        end;
-    end;
-
-    task.wait(FadeTime);
-
-    Outer.Visible = Toggled;
-
-    Fading = false;
 end;
 
     Library:GiveSignal(InputService.InputBegan:Connect(function(Input, Processed)
