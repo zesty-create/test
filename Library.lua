@@ -11,7 +11,6 @@ local Mouse = LocalPlayer:GetMouse();
 local ScreenGui = Instance.new('ScreenGui');
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global;
 ScreenGui.ResetOnSpawn = false;
-ScreenGui.AutoLocalize = false;
 ScreenGui.Parent = LocalPlayer:WaitForChild('PlayerGui', 10);
 
 local Toggles = {};
@@ -48,7 +47,7 @@ local _rainbowAccum = 0
 
 table.insert(Library.Signals, RunService.Heartbeat:Connect(function(Delta)
     _rainbowAccum = _rainbowAccum + Delta
-    if _rainbowAccum < 0.05 then return end
+    if _rainbowAccum < 0.05 then return end  -- update ~20x/s, not 60x/s
     _rainbowAccum = 0
 
     Hue = Hue + (1 / 400);
@@ -78,7 +77,7 @@ local function GetTeamsString()
     end;
 
     table.sort(TeamList, function(str1, str2) return str1 < str2 end);
-
+    
     return TeamList;
 end;
 
@@ -117,10 +116,6 @@ function Library:Create(Class, Properties)
         _Instance[Property] = Value;
     end;
 
-    if _Instance:IsA('TextLabel') or _Instance:IsA('TextButton') or _Instance:IsA('TextBox') then
-        _Instance.AutoLocalize = false;
-    end;
-
     return _Instance;
 end;
 
@@ -137,13 +132,13 @@ end;
 
 function Library:CreateLabel(Properties, IsHud)
     local _Instance = Instance.new('TextLabel');
-    _Instance.AutoLocalize = false;
     _Instance.BackgroundTransparency = 1;
     _Instance.Font = Library.Font;
     _Instance.TextColor3 = Library.FontColor;
     _Instance.TextSize = 16;
-    _Instance.TextStrokeTransparency = 1;
+    _Instance.TextStrokeTransparency = 1;  -- UIStroke handles the stroke
 
+    -- Apply UIStroke inline (avoids a second Create() call)
     local _stroke = Instance.new('UIStroke');
     _stroke.Color = Color3.new(0, 0, 0);
     _stroke.Thickness = 1;
@@ -152,6 +147,7 @@ function Library:CreateLabel(Properties, IsHud)
 
     Library:AddToRegistry(_Instance, { TextColor3 = 'FontColor' }, IsHud);
 
+    -- Apply caller properties directly
     for Prop, Val in next, Properties do
         _Instance[Prop] = Val;
     end;
@@ -166,6 +162,7 @@ function Library:MakeDraggable(Instance, Cutoff)
     local offX, offY = 0, 0;
     local _cutoff = Cutoff or 40;
 
+    -- Cache anchor offsets; recalculate only on Size change
     local ancX, ancY = 0, 0;
     local function _cacheAnchor()
         ancX = Instance.Size.X.Offset * Instance.AnchorPoint.X;
@@ -191,6 +188,7 @@ function Library:MakeDraggable(Instance, Cutoff)
         end;
     end);
 
+    -- RenderStepped: exactly 1 position write per frame, zero event storm
     Library:GiveSignal(RenderStepped:Connect(function()
         if not Dragging then return end;
         Instance.Position = UDim2.fromOffset(
@@ -388,17 +386,18 @@ function Library:UpdateColorsUsingRegistry()
 end;
 
 function Library:GiveSignal(Signal)
-
+    -- Only used for signals not attached to library instances, as those should be cleaned up on object destruction by Roblox
     Library.Signals[#Library.Signals + 1] = Signal
 end
 
 function Library:Unload()
-
+    -- Unload all of the signals
     for Idx = #Library.Signals, 1, -1 do
         local Connection = table.remove(Library.Signals, Idx)
         Connection:Disconnect()
     end
 
+     -- Call our unload callback, maybe to undo some hooks etc
     if Library.OnUnload then
         Library.OnUnload()
     end
@@ -423,6 +422,7 @@ do
 
     function Funcs:AddColorPicker(Idx, Info)
         local ToggleLabel = self.TextLabel;
+        -- local Container = self.Container;
 
         assert(Info.Default, 'AddColorPicker: Missing default value.');
 
@@ -453,6 +453,7 @@ do
             Parent = ToggleLabel;
         });
 
+        -- Transparency image taken from https://github.com/matas3535/SplixPrivateDrawingLibrary/blob/main/Library.lua cus i'm lazy
         local CheckerFrame = Library:Create('ImageLabel', {
             BorderSizePixel = 0;
             Size = UDim2.new(0, 27, 0, 13);
@@ -461,6 +462,11 @@ do
             Visible = not not Info.Transparency;
             Parent = DisplayFrame;
         });
+
+        -- 1/16/23
+        -- Rewrote this to be placed inside the Library ScreenGui
+        -- There was some issue which caused RelativeOffset to be way off
+        -- Thus the color picker would never show
 
         local PickerFrameOuter = Library:Create('Frame', {
             Name = 'Color';
@@ -554,7 +560,7 @@ do
             Parent = HueSelectorOuter;
         });
 
-        local HueCursor = Library:Create('Frame', {
+        local HueCursor = Library:Create('Frame', { 
             BackgroundColor3 = Color3.new(1, 1, 1);
             AnchorPoint = Vector2.new(0, 0.5);
             BorderColor3 = Color3.new(0, 0, 0);
@@ -620,8 +626,8 @@ do
         });
 
         local TransparencyBoxOuter, TransparencyBoxInner, TransparencyCursor;
-
-        if Info.Transparency then
+        
+        if Info.Transparency then 
             TransparencyBoxOuter = Library:Create('Frame', {
                 BorderColor3 = Color3.new(0, 0, 0);
                 Position = UDim2.fromOffset(4, 251);
@@ -649,7 +655,7 @@ do
                 Parent = TransparencyBoxInner;
             });
 
-            TransparencyCursor = Library:Create('Frame', {
+            TransparencyCursor = Library:Create('Frame', { 
                 BackgroundColor3 = Color3.new(1, 1, 1);
                 AnchorPoint = Vector2.new(0.5, 0);
                 BorderColor3 = Color3.new(0, 0, 0);
@@ -664,11 +670,12 @@ do
             Position = UDim2.fromOffset(5, 5);
             TextXAlignment = Enum.TextXAlignment.Left;
             TextSize = 14;
-            Text = ColorPicker.Title,
+            Text = ColorPicker.Title,--Info.Default;
             TextWrapped = false;
             ZIndex = 16;
             Parent = PickerFrameInner;
         });
+
 
         local ContextMenu = {}
         do
@@ -758,7 +765,7 @@ do
                     TextXAlignment = Enum.TextXAlignment.Left,
                 });
 
-                Library:OnHighlight(Button, Button,
+                Library:OnHighlight(Button, Button, 
                     { TextColor3 = 'AccentColor' },
                     { TextColor3 = 'FontColor' }
                 );
@@ -783,6 +790,7 @@ do
                 end
                 ColorPicker:SetValueRGB(Library.ColorClipboard)
             end)
+
 
             ContextMenu:AddOption('Copy HEX', function()
                 pcall(setclipboard, ColorPicker.Value:ToHex())
@@ -1015,7 +1023,7 @@ do
         local KeyPicker = {
             Value = Info.Default;
             Toggled = false;
-            Mode = Info.Mode or 'Toggle';
+            Mode = Info.Mode or 'Toggle'; -- Always, Toggle, Hold
             Type = 'KeyPicker';
             Callback = Info.Callback or function(Value) end;
             ChangedCallback = Info.ChangedCallback or function(New) end;
@@ -1411,7 +1419,7 @@ do
     end;
 
     function Funcs:AddButton(...)
-
+        -- TODO: Eventually redo this
         local Button = {};
         local function ProcessButtonParams(Class, Obj, ...)
             local Props = select(1, ...)
@@ -1557,6 +1565,7 @@ do
             end
             return self
         end
+
 
         function Button:AddButton(...)
             local SubButton = {}
@@ -1765,23 +1774,28 @@ do
             end);
         end
 
+        -- https://devforum.roblox.com/t/how-to-make-textboxes-follow-current-cursor-position/1368429/6
+        -- thank you nicemike40 :)
+
         local function Update()
             local PADDING = 2
             local reveal = Container.AbsoluteSize.X
 
             if not Box:IsFocused() or Box.TextBounds.X <= reveal - 2 * PADDING then
-
+                -- we aren't focused, or we fit so be normal
                 Box.Position = UDim2.new(0, PADDING, 0, 0)
             else
-
+                -- we are focused and don't fit, so adjust position
                 local cursor = Box.CursorPosition
                 if cursor ~= -1 then
-
+                    -- calculate pixel width of text from start to cursor
                     local subtext = string.sub(Box.Text, 1, cursor-1)
                     local width = TextService:GetTextSize(subtext, Box.TextSize, Box.Font, Vector2.new(math.huge, math.huge)).X
 
+                    -- check if we're inside the box with the cursor
                     local currentCursorPos = Box.Position.X.Offset + width
 
+                    -- adjust if necessary
                     if currentCursorPos < PADDING then
                         Box.Position = UDim2.fromOffset(PADDING-width, 0)
                     elseif currentCursorPos > reveal - PADDING - 1 then
@@ -1927,7 +1941,7 @@ do
 
         ToggleRegion.InputBegan:Connect(function(Input)
             if Input.UserInputType == Enum.UserInputType.MouseButton1 and not Library:MouseIsOverOpenedFrame() then
-                Toggle:SetValue(not Toggle.Value)
+                Toggle:SetValue(not Toggle.Value) -- Why was it not like this from the start?
                 Library:AttemptSave();
             end;
         end);
@@ -2088,6 +2102,7 @@ do
                 return math.floor(Value);
             end;
 
+
             return tonumber(string.format('%.' .. Slider.Rounding .. 'f', Value))
         end;
 
@@ -2169,7 +2184,7 @@ do
             Value = Info.Multi and {};
             Multi = Info.Multi;
             Type = 'Dropdown';
-            SpecialType = Info.SpecialType;
+            SpecialType = Info.SpecialType; -- can be either 'Player' or 'Team'
             Callback = Info.Callback or function(Value) end;
         };
 
@@ -2247,7 +2262,7 @@ do
             Position = UDim2.new(0, 5, 0, 0);
             Size = UDim2.new(1, -5, 1, 0);
             TextSize = 14;
-            Text = '
+            Text = '--';
             TextXAlignment = Enum.TextXAlignment.Left;
             TextWrapped = true;
             ZIndex = 7;
@@ -2278,10 +2293,10 @@ do
             local dropBottom = DropdownOuter.AbsolutePosition.Y + DropdownOuter.Size.Y.Offset;
             local listHeight = ListOuter.AbsoluteSize.Y;
             if dropBottom + listHeight + 1 > screenHeight then
-
+                -- not enough space below, open upward
                 ListOuter.Position = UDim2.fromOffset(DropdownOuter.AbsolutePosition.X, DropdownOuter.AbsolutePosition.Y - listHeight - 1);
             else
-
+                -- enough space below, open downward
                 ListOuter.Position = UDim2.fromOffset(DropdownOuter.AbsolutePosition.X, dropBottom + 1);
             end;
         end;
@@ -2358,7 +2373,7 @@ do
                 Str = Dropdown.Value or '';
             end;
 
-            ItemList.Text = (Str == '' and '
+            ItemList.Text = (Str == '' and '--' or Str);
         end;
 
         function Dropdown:GetActiveValues()
@@ -2615,7 +2630,7 @@ do
         local Depbox = {
             Dependencies = {};
         };
-
+        
         local Groupbox = self;
         local Container = Groupbox.Container;
 
@@ -2694,6 +2709,7 @@ do
     end;
 end;
 
+-- < Create other UI elements >
 do
     Library.NotificationArea = Library:Create('Frame', {
         BackgroundTransparency = 1;
@@ -2771,6 +2787,8 @@ do
     Library.Watermark = WatermarkOuter;
     Library.WatermarkText = WatermarkLabel;
     Library:MakeDraggable(Library.Watermark);
+
+
 
     local KeybindOuter = Library:Create('Frame', {
         AnchorPoint = Vector2.new(0, 0.5);
@@ -3059,6 +3077,7 @@ function Library:CreateWindow(...)
         ZIndex = 2;
         Parent = MainSectionInner;
     });
+    
 
     Library:AddToRegistry(TabContainer, {
         BackgroundColor3 = 'MainColor';
@@ -3213,7 +3232,7 @@ function Library:CreateWindow(...)
             local BoxInner = Library:Create('Frame', {
                 BackgroundColor3 = Library.BackgroundColor;
                 BorderColor3 = Color3.new(0, 0, 0);
-
+                -- BorderMode = Enum.BorderMode.Inset;
                 Size = UDim2.new(1, -2, 1, -2);
                 Position = UDim2.new(0, 1, 0, 1);
                 ZIndex = 4;
@@ -3313,7 +3332,7 @@ function Library:CreateWindow(...)
             local BoxInner = Library:Create('Frame', {
                 BackgroundColor3 = Library.BackgroundColor;
                 BorderColor3 = Color3.new(0, 0, 0);
-
+                -- BorderMode = Enum.BorderMode.Inset;
                 Size = UDim2.new(1, -2, 1, -2);
                 Position = UDim2.new(0, 1, 0, 1);
                 ZIndex = 4;
@@ -3469,6 +3488,7 @@ function Library:CreateWindow(...)
                 Tab:AddBlank(3);
                 Tab:Resize();
 
+                -- Show first tab (number is 2 cus of the UIListLayout that also sits in that instance)
                 if #TabboxButtons:GetChildren() == 2 then
                     Tab:Show();
                 end;
@@ -3499,6 +3519,7 @@ function Library:CreateWindow(...)
             end;
         end);
 
+        -- This was the first tab added, so we show it by default.
         if #TabContainer:GetChildren() == 1 then
             Tab:ShowTab();
         end;
