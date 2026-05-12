@@ -8,9 +8,15 @@ local RenderStepped = RunService.RenderStepped;
 local LocalPlayer = Players.LocalPlayer;
 local Mouse = LocalPlayer:GetMouse();
 
+local LocalizationService = game:GetService('LocalizationService');
+pcall(function()
+    LocalizationService.RobloxForcePlayModeLang = '';
+end);
+
 local ScreenGui = Instance.new('ScreenGui');
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global;
 ScreenGui.ResetOnSpawn = false;
+ScreenGui.AutoLocalize = false;
 ScreenGui.Parent = LocalPlayer:WaitForChild('PlayerGui', 10);
 
 local Toggles = {};
