@@ -2947,9 +2947,7 @@ end;
 
 function Library:SetWatermark(Text)
     local X, Y = Library:GetTextBounds(Text, Library.Font, 14);
-    local wmWidth = X + 15;
-    Library.Watermark.Size = UDim2.new(0, wmWidth, 0, (Y * 1.5) + 3);
-    Library.Watermark.Position = UDim2.fromOffset((ScreenGui.AbsoluteSize.X - wmWidth) / 2, -28);
+    Library.Watermark.Size = UDim2.new(0, X + 15, 0, (Y * 1.5) + 3);
     Library:SetWatermarkVisibility(true)
 
     Library.WatermarkText.Text = Text;
