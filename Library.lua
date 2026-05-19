@@ -42,6 +42,7 @@ local Library = {
     Signals = {};
     ScreenGui = ScreenGui;
 
+    -- Centralized KeyPicker registry: one InputBegan/InputEnded for all pickers
     _KeyPickers = {};
 };
 
@@ -50,7 +51,7 @@ local _rainbowAccum = 0
 
 table.insert(Library.Signals, RunService.Heartbeat:Connect(function(Delta)
     _rainbowAccum = _rainbowAccum + Delta
-    if _rainbowAccum < 0.05 then return end
+    if _rainbowAccum < 0.05 then return end  -- update ~20x/s, not 60x/s
     _rainbowAccum = 0
 
     Hue = Hue + (1 / 400);
@@ -60,6 +61,7 @@ table.insert(Library.Signals, RunService.Heartbeat:Connect(function(Delta)
     Library.CurrentRainbowColor = Color3.fromHSV(Hue, 0.8, 1);
 end))
 
+-- Global KeyPicker dispatcher: one InputBegan/InputEnded for ALL KeyPickers
 table.insert(Library.Signals, InputService.InputBegan:Connect(function(Input, Processed)
     local kp = Library._KeyPickers
     for i = 1, #kp do
@@ -108,6 +110,7 @@ table.insert(Library.Signals, InputService.InputEnded:Connect(function()
     end
 end))
 
+-- Cached player/team lists; rebuilt only on actual change events
 local _cachedPlayerList = nil;
 local _cachedTeamList   = nil;
 
@@ -137,6 +140,7 @@ local function GetTeamsString()
     return _cachedTeamList;
 end;
 
+-- Invalidate caches on join/leave (actual rebuild deferred to next call)
 Players.PlayerAdded:Connect(function()   _cachedPlayerList = nil end);
 Players.PlayerRemoving:Connect(function() _cachedPlayerList = nil end);
 Teams.ChildAdded:Connect(function()    _cachedTeamList = nil end);
@@ -197,9 +201,10 @@ function Library:CreateLabel(Properties, IsHud)
     _Instance.Font = Library.Font;
     _Instance.TextColor3 = Library.FontColor;
     _Instance.TextSize = 16;
-    _Instance.TextStrokeTransparency = 1;
+    _Instance.TextStrokeTransparency = 1;  -- UIStroke handles the stroke
     _Instance.AutoLocalize = false;
 
+    -- Apply UIStroke inline (avoids a second Create() call)
     local _stroke = Instance.new('UIStroke');
     _stroke.Color = Color3.new(0, 0, 0);
     _stroke.Thickness = 1;
@@ -208,6 +213,7 @@ function Library:CreateLabel(Properties, IsHud)
 
     Library:AddToRegistry(_Instance, { TextColor3 = 'FontColor' }, IsHud);
 
+    -- Apply caller properties directly
     for Prop, Val in next, Properties do
         _Instance[Prop] = Val;
     end;
@@ -222,6 +228,7 @@ function Library:MakeDraggable(Instance, Cutoff)
     local offX, offY = 0, 0;
     local _cutoff = Cutoff or 40;
 
+    -- Cache anchor offsets; recalculate only on Size change
     local ancX, ancY = 0, 0;
     local function _cacheAnchor()
         ancX = Instance.Size.X.Offset * Instance.AnchorPoint.X;
@@ -396,6 +403,7 @@ end;
 Library.AccentColorDark = Library:GetDarkerColor(Library.AccentColor);
 Library.MainColorDark   = Library:GetDarkerColor(Library.MainColor);
 
+-- Cached gradient ColorSequence for Watermark/Notify; rebuilt only when MainColor changes
 local _cachedMainGradient = nil;
 local _cachedMainColorForGradient = nil;
 local function GetMainGradient()
@@ -434,15 +442,17 @@ function Library:RemoveFromRegistry(Instance)
     local Data = Library.RegistryMap[Instance];
     if not Data then return end;
 
+    -- O(1) swap-remove using cached Idx
     local reg = Library.Registry;
     local regIdx = Data.Idx;
     local last = reg[#reg];
     if last and last ~= Data then
         reg[regIdx] = last;
-        last.Idx = regIdx;
+        last.Idx = regIdx;  -- update moved element's cached index
     end;
     reg[#reg] = nil;
 
+    -- HudRegistry: linear scan (small, rarely used)
     local hud = Library.HudRegistry;
     for i = #hud, 1, -1 do
         if hud[i] == Data then
@@ -475,21 +485,23 @@ function Library:UpdateColorsUsingRegistry()
 end;
 
 function Library:GiveSignal(Signal)
-
+    -- Only used for signals not attached to library instances, as those should be cleaned up on object destruction by Roblox
     Library.Signals[#Library.Signals + 1] = Signal
 end
 
 Library._OnUnloadCallback = nil;
 
 function Library:Unload()
-
+    -- Disconnect all signals (includes the global KeyPicker dispatchers)
     for Idx = #Library.Signals, 1, -1 do
         local Connection = table.remove(Library.Signals, Idx)
         Connection:Disconnect()
     end
 
+    -- Clear centralized KeyPicker registry
     table.clear(Library._KeyPickers)
 
+    -- Call unload callback (e.g. undo hooks)
     if Library._OnUnloadCallback then
         Library._OnUnloadCallback()
     end
@@ -514,6 +526,7 @@ do
 
     function Funcs:AddColorPicker(Idx, Info)
         local ToggleLabel = self.TextLabel;
+        -- local Container = self.Container;
 
         assert(Info.Default, 'AddColorPicker: Missing default value.');
 
@@ -544,6 +557,7 @@ do
             Parent = ToggleLabel;
         });
 
+        -- Transparency image taken from https://github.com/matas3535/SplixPrivateDrawingLibrary/blob/main/Library.lua cus i'm lazy
         local CheckerFrame = Library:Create('ImageLabel', {
             BorderSizePixel = 0;
             Size = UDim2.new(0, 27, 0, 13);
@@ -552,6 +566,11 @@ do
             Visible = not not Info.Transparency;
             Parent = DisplayFrame;
         });
+
+        -- 1/16/23
+        -- Rewrote this to be placed inside the Library ScreenGui
+        -- There was some issue which caused RelativeOffset to be way off
+        -- Thus the color picker would never show
 
         local PickerFrameOuter = Library:Create('Frame', {
             Name = 'Color';
@@ -645,7 +664,7 @@ do
             Parent = HueSelectorOuter;
         });
 
-        local HueCursor = Library:Create('Frame', {
+        local HueCursor = Library:Create('Frame', { 
             BackgroundColor3 = Color3.new(1, 1, 1);
             AnchorPoint = Vector2.new(0, 0.5);
             BorderColor3 = Color3.new(0, 0, 0);
@@ -712,8 +731,8 @@ do
         });
 
         local TransparencyBoxOuter, TransparencyBoxInner, TransparencyCursor;
-
-        if Info.Transparency then
+        
+        if Info.Transparency then 
             TransparencyBoxOuter = Library:Create('Frame', {
                 BorderColor3 = Color3.new(0, 0, 0);
                 Position = UDim2.fromOffset(4, 251);
@@ -741,7 +760,7 @@ do
                 Parent = TransparencyBoxInner;
             });
 
-            TransparencyCursor = Library:Create('Frame', {
+            TransparencyCursor = Library:Create('Frame', { 
                 BackgroundColor3 = Color3.new(1, 1, 1);
                 AnchorPoint = Vector2.new(0.5, 0);
                 BorderColor3 = Color3.new(0, 0, 0);
@@ -756,11 +775,12 @@ do
             Position = UDim2.fromOffset(5, 5);
             TextXAlignment = Enum.TextXAlignment.Left;
             TextSize = 14;
-            Text = ColorPicker.Title,
+            Text = ColorPicker.Title,--Info.Default;
             TextWrapped = false;
             ZIndex = 16;
             Parent = PickerFrameInner;
         });
+
 
         local ContextMenu = {}
         do
@@ -850,7 +870,7 @@ do
                     TextXAlignment = Enum.TextXAlignment.Left,
                 });
 
-                Library:OnHighlight(Button, Button,
+                Library:OnHighlight(Button, Button, 
                     { TextColor3 = 'AccentColor' },
                     { TextColor3 = 'FontColor' }
                 );
@@ -875,6 +895,7 @@ do
                 end
                 ColorPicker:SetValueRGB(Library.ColorClipboard)
             end)
+
 
             ContextMenu:AddOption('Copy HEX', function()
                 pcall(setclipboard, ColorPicker.Value:ToHex())
@@ -935,6 +956,7 @@ do
             ColorPicker.Value = Color3.fromHSV(ColorPicker.Hue, ColorPicker.Sat, ColorPicker.Vib);
             SatVibMap.BackgroundColor3 = Color3.fromHSV(ColorPicker.Hue, 1, 1);
 
+            -- Direct assignment avoids the Create() table iteration overhead
             DisplayFrame.BackgroundColor3 = ColorPicker.Value;
             DisplayFrame.BackgroundTransparency = ColorPicker.Transparency;
             DisplayFrame.BorderColor3 = Library:GetDarkerColor(ColorPicker.Value);
@@ -1105,7 +1127,7 @@ do
         local KeyPicker = {
             Value = Info.Default;
             Toggled = false;
-            Mode = Info.Mode or 'Toggle';
+            Mode = Info.Mode or 'Toggle'; -- Always, Toggle, Hold
             Type = 'KeyPicker';
             Callback = Info.Callback or function(Value) end;
             ChangedCallback = Info.ChangedCallback or function(New) end;
@@ -1238,6 +1260,7 @@ do
             ModeButtons[Mode] = ModeButton;
         end;
 
+        -- Cache layout once per KeyPicker creation; avoids repeated FindFirstChildWhichIsA calls
         local _keybindLayout = Library.KeybindContainer:FindFirstChildWhichIsA('UIListLayout');
 
         function KeyPicker:Update()
@@ -1324,7 +1347,7 @@ do
         end
 
         local Picking = false;
-        local _pickingRef = {false};
+        local _pickingRef = {false};  -- boxed bool shared with global KeyPicker dispatcher
 
         PickOuter.InputBegan:Connect(function(Input)
             if Input.UserInputType == Enum.UserInputType.MouseButton1 and not Library:MouseIsOverOpenedFrame() then
@@ -1383,6 +1406,7 @@ do
             end;
         end);
 
+        -- Register in centralized dispatcher (no per-picker InputBegan/InputEnded connections)
         Library._KeyPickers[#Library._KeyPickers + 1] = {
             KeyPicker       = KeyPicker;
             PickingRef      = _pickingRef;
@@ -1473,7 +1497,7 @@ do
     end;
 
     function Funcs:AddButton(...)
-
+        -- TODO: Eventually redo this
         local Button = {};
         local function ProcessButtonParams(Class, Obj, ...)
             local Props = select(1, ...)
@@ -1547,7 +1571,7 @@ do
         end
 
         local function InitEvents(Button)
-
+            -- Zero-allocation wait: uses a coroutine instead of BindableEvent
             local function WaitForEvent(event, timeout, validator)
                 local co = coroutine.running()
                 local fired = false
@@ -1623,6 +1647,7 @@ do
             end
             return self
         end
+
 
         function Button:AddButton(...)
             local SubButton = {}
@@ -1832,23 +1857,28 @@ do
             end);
         end
 
+        -- https://devforum.roblox.com/t/how-to-make-textboxes-follow-current-cursor-position/1368429/6
+        -- thank you nicemike40 :)
+
         local function Update()
             local PADDING = 2
             local reveal = Container.AbsoluteSize.X
 
             if not Box:IsFocused() or Box.TextBounds.X <= reveal - 2 * PADDING then
-
+                -- we aren't focused, or we fit so be normal
                 Box.Position = UDim2.new(0, PADDING, 0, 0)
             else
-
+                -- we are focused and don't fit, so adjust position
                 local cursor = Box.CursorPosition
                 if cursor ~= -1 then
-
+                    -- calculate pixel width of text from start to cursor
                     local subtext = string.sub(Box.Text, 1, cursor-1)
                     local width = TextService:GetTextSize(subtext, Box.TextSize, Box.Font, Vector2.new(math.huge, math.huge)).X
 
+                    -- check if we're inside the box with the cursor
                     local currentCursorPos = Box.Position.X.Offset + width
 
+                    -- adjust if necessary
                     if currentCursorPos < PADDING then
                         Box.Position = UDim2.fromOffset(PADDING-width, 0)
                     elseif currentCursorPos > reveal - PADDING - 1 then
@@ -1994,7 +2024,7 @@ do
 
         ToggleRegion.InputBegan:Connect(function(Input)
             if Input.UserInputType == Enum.UserInputType.MouseButton1 and not Library:MouseIsOverOpenedFrame() then
-                Toggle:SetValue(not Toggle.Value)
+                Toggle:SetValue(not Toggle.Value) -- Why was it not like this from the start?
                 Library:AttemptSave();
             end;
         end);
@@ -2155,6 +2185,7 @@ do
                 return math.floor(Value);
             end;
 
+
             return tonumber(string.format('%.' .. Slider.Rounding .. 'f', Value))
         end;
 
@@ -2236,7 +2267,7 @@ do
             Value = Info.Multi and {};
             Multi = Info.Multi;
             Type = 'Dropdown';
-            SpecialType = Info.SpecialType;
+            SpecialType = Info.SpecialType; -- can be either 'Player' or 'Team'
             Callback = Info.Callback or function(Value) end;
         };
 
@@ -2337,10 +2368,10 @@ do
             local dropBottom = DropdownOuter.AbsolutePosition.Y + DropdownOuter.Size.Y.Offset;
             local listHeight = ListOuter.AbsoluteSize.Y;
             if dropBottom + listHeight + 1 > screenHeight then
-
+                -- not enough space below, open upward
                 ListOuter.Position = UDim2.fromOffset(DropdownOuter.AbsolutePosition.X, DropdownOuter.AbsolutePosition.Y - listHeight - 1);
             else
-
+                -- enough space below, open downward
                 ListOuter.Position = UDim2.fromOffset(DropdownOuter.AbsolutePosition.X, dropBottom + 1);
             end;
         end;
@@ -2405,7 +2436,7 @@ do
             local Str;
 
             if Info.Multi then
-
+                -- table.concat avoids O(n²) string concatenation
                 local parts = {};
                 local Values = Dropdown.Values;
                 for i = 1, #Values do
@@ -2424,7 +2455,7 @@ do
 
         function Dropdown:GetActiveValues()
             if Info.Multi then
-
+                -- Return count; callers only check == 1, not the actual list
                 local count = 0;
                 for _ in next, Dropdown.Value do count = count + 1 end;
                 return count;
@@ -2438,6 +2469,7 @@ do
         function Dropdown:BuildDropdownList()
             local Values = Dropdown.Values;
 
+            -- Skip full rebuild if the value list reference hasn't changed
             if Values == _lastBuiltValues then
                 Dropdown:Display();
                 return;
@@ -2675,6 +2707,7 @@ do
 
         Options[Idx] = Dropdown;
 
+        -- Register Player-dropdowns in fast-lookup cache
         if Info.SpecialType == 'Player' and Library._RegisterPlayerDropdown then
             Library._RegisterPlayerDropdown(Dropdown)
         end
@@ -2686,7 +2719,7 @@ do
         local Depbox = {
             Dependencies = {};
         };
-
+        
         local Groupbox = self;
         local Container = Groupbox.Container;
 
@@ -2765,6 +2798,7 @@ do
     end;
 end;
 
+-- < Create other UI elements >
 do
     Library.NotificationArea = Library:Create('Frame', {
         BackgroundTransparency = 1;
@@ -2837,6 +2871,8 @@ do
     Library.Watermark = WatermarkOuter;
     Library.WatermarkText = WatermarkLabel;
     Library:MakeDraggable(Library.Watermark);
+
+
 
     local KeybindOuter = Library:Create('Frame', {
         AnchorPoint = Vector2.new(0, 0.5);
@@ -3120,6 +3156,7 @@ function Library:CreateWindow(...)
         ZIndex = 2;
         Parent = MainSectionInner;
     });
+    
 
     Library:AddToRegistry(TabContainer, {
         BackgroundColor3 = 'MainColor';
@@ -3275,7 +3312,7 @@ function Library:CreateWindow(...)
             local BoxInner = Library:Create('Frame', {
                 BackgroundColor3 = Library.BackgroundColor;
                 BorderColor3 = Color3.new(0, 0, 0);
-
+                -- BorderMode = Enum.BorderMode.Inset;
                 Size = UDim2.new(1, -2, 1, -2);
                 Position = UDim2.new(0, 1, 0, 1);
                 ZIndex = 4;
@@ -3322,10 +3359,11 @@ function Library:CreateWindow(...)
                 Parent = Container;
             });
 
+            -- Cache UIListLayout so Resize never calls GetChildren
             local _containerLayout = Container:WaitForChild('UIListLayout', 1) or Container:FindFirstChildWhichIsA('UIListLayout');
 
             function Groupbox:Resize()
-
+                -- AbsoluteContentSize sums visible children automatically
                 local Size = _containerLayout and _containerLayout.AbsoluteContentSize.Y or 0;
                 BoxOuter.Size = UDim2.new(1, 0, 0, 20 + Size + 4);
             end;
@@ -3352,7 +3390,7 @@ function Library:CreateWindow(...)
         function Tab:AddTabbox(Info)
             local Tabbox = {
                 Tabs = {};
-                _TabCount = 0;
+                _TabCount = 0;  -- cached, avoids iterating Tabs on every Resize
             };
 
             local BoxOuter = Library:Create('Frame', {
@@ -3372,7 +3410,7 @@ function Library:CreateWindow(...)
             local BoxInner = Library:Create('Frame', {
                 BackgroundColor3 = Library.BackgroundColor;
                 BorderColor3 = Color3.new(0, 0, 0);
-
+                -- BorderMode = Enum.BorderMode.Inset;
                 Size = UDim2.new(1, -2, 1, -2);
                 Position = UDim2.new(0, 1, 0, 1);
                 ZIndex = 4;
@@ -3485,6 +3523,7 @@ function Library:CreateWindow(...)
                     Library.RegistryMap[Button].Properties.BackgroundColor3 = 'MainColor';
                 end;
 
+                -- Cache the container layout once per tab
                 local _tabContainerLayout = Container:FindFirstChildWhichIsA('UIListLayout');
 
                 function Tab:Resize()
@@ -3519,6 +3558,7 @@ function Library:CreateWindow(...)
                 Tab:AddBlank(3);
                 Tab:Resize();
 
+                -- Show first tab when it is the only one
                 if Tabbox._TabCount == 1 then
                     Tab:Show();
                 end;
@@ -3549,6 +3589,7 @@ function Library:CreateWindow(...)
             end;
         end);
 
+        -- This was the first tab added, so we show it by default.
         if #TabContainer:GetChildren() == 1 then
             Tab:ShowTab();
         end;
@@ -3596,6 +3637,7 @@ function Library:CreateWindow(...)
     return Window;
 end;
 
+-- Cached list of Player-dropdowns; avoids scanning all Options on every join/leave
 local _PlayerDropdowns = {}
 
 local function OnPlayerChange()
@@ -3605,6 +3647,7 @@ local function OnPlayerChange()
     end;
 end;
 
+-- Hook: when AddDropdown creates a Player dropdown, register it
 Library._RegisterPlayerDropdown = function(dropdown)
     _PlayerDropdowns[#_PlayerDropdowns + 1] = dropdown
 end
