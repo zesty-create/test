@@ -480,18 +480,52 @@ end
 Library._OnUnloadCallback = nil;
 
 function Library:Unload()
+    Library.Unloaded = true
+
+    for _, toggle in pairs(getgenv().Toggles or {}) do
+        pcall(function()
+            if toggle.Value == true then
+                toggle:SetValue(false)
+            end
+        end)
+    end
+
+    for _, option in pairs(getgenv().Options or {}) do
+        pcall(function()
+            if option.Default ~= nil and option.SetValue then
+                option:SetValue(option.Default)
+            end
+        end)
+    end
+
+    if Library._OnUnloadCallback then
+        pcall(Library._OnUnloadCallback)
+    end
+
     for Idx = #Library.Signals, 1, -1 do
         local Connection = table.remove(Library.Signals, Idx)
-        Connection:Disconnect()
+        pcall(function() Connection:Disconnect() end)
     end
 
     table.clear(Library._KeyPickers)
 
-    if Library._OnUnloadCallback then
-        Library._OnUnloadCallback()
+    local rs = game:GetService('RunService')
+    for _, name in ipairs({'RenderStepped', 'Heartbeat', 'Stepped'}) do
+        pcall(function()
+            if rs[name] then
+                rs[name]:DisconnectAll()
+            end
+        end)
     end
 
-    ScreenGui:Destroy()
+    if ScreenGui and ScreenGui.Parent then
+        ScreenGui:Destroy()
+    end
+
+    getgenv().Library = nil
+    getgenv().Toggles = nil
+    getgenv().Options = nil
+    getgenv().SkywareLoaded = nil
 end
 
 function Library:OnUnload(Callback)
