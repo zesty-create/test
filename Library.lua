@@ -480,18 +480,26 @@ end
 Library._OnUnloadCallback = nil;
 
 function Library:Unload()
+    Library.Unloaded = true
+
+    if Library._OnUnloadCallback then
+        pcall(Library._OnUnloadCallback)
+    end
+
     for Idx = #Library.Signals, 1, -1 do
         local Connection = table.remove(Library.Signals, Idx)
-        Connection:Disconnect()
+        pcall(function() Connection:Disconnect() end)
     end
 
     table.clear(Library._KeyPickers)
 
-    if Library._OnUnloadCallback then
-        Library._OnUnloadCallback()
+    if ScreenGui and ScreenGui.Parent then
+        ScreenGui:Destroy()
     end
 
-    ScreenGui:Destroy()
+    getgenv().Library = nil
+    getgenv().Toggles = nil
+    getgenv().Options = nil
 end
 
 function Library:OnUnload(Callback)
