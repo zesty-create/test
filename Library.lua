@@ -3599,6 +3599,13 @@ function Library:CreateWindow(...)
         ModalElement.Modal = Toggled;
         Outer.Visible = Toggled;
 
+        if not Toggled then
+            for Frame, _ in next, Library.OpenedFrames do
+                Frame.Visible = false;
+            end;
+            table.clear(Library.OpenedFrames);
+        end;
+
         if Toggled then
             InputService.MouseIconEnabled = true;
             InputService.MouseBehavior = Enum.MouseBehavior.Default;
