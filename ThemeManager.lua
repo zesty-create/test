@@ -105,10 +105,6 @@ function SaveManager:CreateConfigManager(groupbox)
     groupbox:AddButton('Refresh', function()
         Options.ConfigManager_List:SetValues(self:RefreshConfigs())
     end)
-
-    Options.ConfigManager_List:OnChanged(function()
-        -- nothing
-    end)
 end
 
 function SaveManager:BuildConfigSection(tab)
