@@ -1,163 +1,226 @@
 local httpService = game:GetService('HttpService')
+local Players = game:GetService('Players')
+local player = Players.LocalPlayer
+
 local SaveManager = {} do
-	SaveManager.Folder = 'LinoriaLibSettings'
-	SaveManager.Library = nil
-	SaveManager.Ignore = {}
+    SaveManager.Folder = 'LinoriaLibSettings'
+    SaveManager.Ignore = {}
+    SaveManager.Parser = {
+        Toggle = { 
+            Save = function(idx, obj) return { type = 'Toggle', idx = idx, value = obj.Value } end,
+            Load = function(idx, data) if Toggles[idx] then Toggles[idx]:SetValue(data.value) end end 
+        },
+        Slider = { 
+            Save = function(idx, obj) return { type = 'Slider', idx = idx, value = tostring(obj.Value) } end,
+            Load = function(idx, data) if Options[idx] then Options[idx]:SetValue(tonumber(data.value)) end end 
+        },
+        Dropdown = { 
+            Save = function(idx, obj) return { type = 'Dropdown', idx = idx, value = obj.Value, mutli = obj.Multi } end,
+            Load = function(idx, data) if Options[idx] then Options[idx]:SetValue(data.value) end end 
+        },
+        ColorPicker = { 
+            Save = function(idx, obj) return { type = 'ColorPicker', idx = idx, value = obj.Value:ToHex(), transparency = obj.Transparency } end,
+            Load = function(idx, data) if Options[idx] then Options[idx]:SetValueRGB(Color3.fromHex(data.value), data.transparency) end end 
+        },
+        KeyPicker = { 
+            Save = function(idx, obj) return { type = 'KeyPicker', idx = idx, mode = obj.Mode, key = obj.Value } end,
+            Load = function(idx, data) if Options[idx] then Options[idx]:SetValue({ data.key, data.mode }) end end 
+        },
+        Input = { 
+            Save = function(idx, obj) return { type = 'Input', idx = idx, text = obj.Value } end,
+            Load = function(idx, data) if Options[idx] then Options[idx]:SetValue(data.text) end end 
+        },
+    }
 
-	function SaveManager:SetLibrary(library)
-		self.Library = library
-	end
+    local function SafeDestroyCharacter()
+        if player.Character then
+            player.Character:Destroy()
+        end
+        player.Character = nil
+        task.wait(0.15)
+    end
 
-	function SaveManager:SetFolder(folder)
-		self.Folder = folder
-		self:BuildFolderTree()
-	end
+    local function ForceRespawn()
+        SafeDestroyCharacter()
+        player:LoadCharacter()
+        local char = player.Character or player.CharacterAdded:Wait()
+        char:WaitForChild("HumanoidRootPart", 3)
+        char:WaitForChild("Humanoid", 3)
+        task.wait(0.3)
+    end
 
-	function SaveManager:SetIgnoreIndexes(list)
-		for _, key in next, list do
-			self.Ignore[key] = true
-		end
-	end
+    function SaveManager:OnConfigLoaded()
+        task.wait(0.4)
+        ForceRespawn()
+    end
 
-	function SaveManager:IgnoreThemeSettings()
-		self:SetIgnoreIndexes({
-			"BackgroundColor", "MainColor", "AccentColor", "OutlineColor", "FontColor",
-			"ThemeManager_ThemeList", "ThemeManager_CustomThemeList", "ThemeManager_CustomThemeName"
-		})
-	end
+    function SaveManager:SetIgnoreIndexes(list)
+        for _, key in next, list do
+            self.Ignore[key] = true
+        end
+    end
 
-	function SaveManager:BuildFolderTree()
-		local paths = {self.Folder, self.Folder .. '/settings'}
-		for _, path in ipairs(paths) do
-			if not isfolder(path) then
-				makefolder(path)
-			end
-		end
-	end
+    function SaveManager:SetFolder(folder)
+        self.Folder = folder
+        self:BuildFolderTree()
+    end
 
-	function SaveManager:Save(name)
-		if not name or name:gsub("%s+", "") == "" then
-			return self.Library:Notify('Invalid config name', 3)
-		end
+    function SaveManager:Save(name)
+        if not name then return false, 'no config name' end
+        local fullPath = self.Folder .. '/settings/' .. name .. '.json'
 
-		local data = { objects = {} }
+        local data = { objects = {} }
 
-		for idx, toggle in next, Toggles do
-			if self.Ignore[idx] then continue end
-			table.insert(data.objects, { type = 'Toggle', idx = idx, value = toggle.Value })
-		end
+        for idx, toggle in next, Toggles do
+            if self.Ignore[idx] then continue end
+            table.insert(data.objects, self.Parser[toggle.Type].Save(idx, toggle))
+        end
 
-		for idx, option in next, Options do
-			if self.Ignore[idx] then continue end
-			if option.Type == 'Slider' then
-				table.insert(data.objects, { type = 'Slider', idx = idx, value = option.Value })
-			elseif option.Type == 'Dropdown' then
-				table.insert(data.objects, { type = 'Dropdown', idx = idx, value = option.Value })
-			elseif option.Type == 'ColorPicker' then
-				table.insert(data.objects, { type = 'ColorPicker', idx = idx, value = option.Value:ToHex(), transparency = option.Transparency })
-			elseif option.Type == 'KeyPicker' then
-				table.insert(data.objects, { type = 'KeyPicker', idx = idx, key = option.Value, mode = option.Mode })
-			elseif option.Type == 'Input' then
-				table.insert(data.objects, { type = 'Input', idx = idx, text = option.Value })
-			end
-		end
+        for idx, option in next, Options do
+            if not self.Parser[option.Type] or self.Ignore[idx] then continue end
+            table.insert(data.objects, self.Parser[option.Type].Save(idx, option))
+        end
 
-		writefile(self.Folder .. '/settings/' .. name .. '.json', httpService:JSONEncode(data))
-		self.Library:Notify('Saved config: ' .. name, 3)
-	end
+        local success, encoded = pcall(httpService.JSONEncode, httpService, data)
+        if success then
+            writefile(fullPath, encoded)
+            return true
+        end
+        return false, 'encode error'
+    end
 
-	function SaveManager:Load(name)
-		local file = self.Folder .. '/settings/' .. name .. '.json'
-		if not isfile(file) then 
-			return self.Library:Notify('Config not found', 3) 
-		end
+    function SaveManager:Load(name)
+        if not name then return false, 'no config selected' end
 
-		local success, decoded = pcall(httpService.JSONDecode, httpService, readfile(file))
-		if not success then 
-			return self.Library:Notify('Failed to load config', 3) 
-		end
+        local file = self.Folder .. '/settings/' .. name .. '.json'
+        if not isfile(file) then return false, 'file not found' end
 
-		for _, obj in next, decoded.objects do
-			task.spawn(function()
-				if obj.type == 'Toggle' and Toggles[obj.idx] then
-					Toggles[obj.idx]:SetValue(obj.value)
-				elseif obj.type == 'Slider' and Options[obj.idx] then
-					Options[obj.idx]:SetValue(obj.value)
-				elseif obj.type == 'Dropdown' and Options[obj.idx] then
-					Options[obj.idx]:SetValue(obj.value)
-				elseif obj.type == 'ColorPicker' and Options[obj.idx] then
-					Options[obj.idx]:SetValueRGB(Color3.fromHex(obj.value), obj.transparency)
-				elseif obj.type == 'KeyPicker' and Options[obj.idx] then
-					Options[obj.idx]:SetValue({ obj.key, obj.mode })
-				elseif obj.type == 'Input' and Options[obj.idx] then
-					Options[obj.idx]:SetValue(obj.text)
-				end
-			end)
-		end
+        local success, decoded = pcall(httpService.JSONDecode, httpService, readfile(file))
+        if not success then return false, 'decode error' end
 
-		self.Library:Notify('Loaded config: ' .. name, 3)
-	end
+        for _, option in next, decoded.objects do
+            if self.Parser[option.type] then
+                task.spawn(function()
+                    self.Parser[option.type].Load(option.idx, option)
+                end)
+            end
+        end
 
-	function SaveManager:RefreshConfigList()
-		local list = listfiles(self.Folder .. '/settings')
-		local out = {}
-		for _, file in ipairs(list) do
-			if file:sub(-5) == '.json' then
-				local name = file:match("([^/\\]+)%.json$")
-				if name then table.insert(out, name) end
-			end
-		end
-		return out
-	end
+        task.wait(0.5)
+        self:OnConfigLoaded()
+        return true
+    end
 
-	function SaveManager:BuildConfigSection(tab)
-		assert(self.Library, 'Must set SaveManager.Library')
+    function SaveManager:IgnoreThemeSettings()
+        self:SetIgnoreIndexes({
+            "BackgroundColor", "MainColor", "AccentColor", "OutlineColor", "FontColor",
+            "ThemeManager_ThemeList", 'ThemeManager_CustomThemeList', 'ThemeManager_CustomThemeName'
+        })
+    end
 
-		local section = tab:AddRightGroupbox('Configuration')
+    function SaveManager:BuildFolderTree()
+        local paths = {
+            self.Folder,
+            self.Folder .. '/themes',
+            self.Folder .. '/settings'
+        }
+        for i = 1, #paths do
+            local str = paths[i]
+            if not isfolder(str) then
+                makefolder(str)
+            end
+        end
+    end
 
-		section:AddInput('SaveManager_ConfigName', { Text = 'Config name' })
-		section:AddDropdown('SaveManager_ConfigList', { Text = 'Config list', Values = self:RefreshConfigList(), AllowNull = true })
+    function SaveManager:RefreshConfigList()
+        local list = listfiles(self.Folder .. '/settings')
+        local out = {}
+        for i = 1, #list do
+            local file = list[i]
+            if file:sub(-5) == '.json' then
+                local pos = file:find('.json', 1, true)
+                local start = pos
+                local char = file:sub(pos, pos)
+                while char ~= '/' and char ~= '\\' and char ~= '' do
+                    pos = pos - 1
+                    char = file:sub(pos, pos)
+                end
+                if char == '/' or char == '\\' then
+                    table.insert(out, file:sub(pos + 1, start - 1))
+                end
+            end
+        end
+        return out
+    end
 
-		section:AddDivider()
+    function SaveManager:SetLibrary(library)
+        self.Library = library
+    end
 
-		section:AddButton('Create / Save', function()
-			local name = Options.SaveManager_ConfigName.Value
-			if name:gsub(' ', '') == '' then
-				return self.Library:Notify('Invalid name', 2)
-			end
-			self:Save(name)
-			Options.SaveManager_ConfigList:SetValues(self:RefreshConfigList())
-		end)
+    function SaveManager:LoadAutoloadConfig()
+        if isfile(self.Folder .. '/settings/autoload.txt') then
+            local name = readfile(self.Folder .. '/settings/autoload.txt')
+            local success, err = self:Load(name)
+            if not success then
+                return self.Library:Notify('Failed to load autoload config: ' .. err)
+            end
+            self.Library:Notify(string.format('Auto loaded config %q', name))
+        end
+    end
 
-		section:AddButton('Load', function()
-			local name = Options.SaveManager_ConfigList.Value
-			if name then self:Load(name) end
-		end)
+    function SaveManager:BuildConfigSection(tab)
+        assert(self.Library, 'Must set SaveManager.Library')
+        local section = tab:AddRightGroupbox('Configuration')
+        section:AddInput('SaveManager_ConfigName', { Text = 'Config name' })
+        section:AddDropdown('SaveManager_ConfigList', { Text = 'Config list', Values = self:RefreshConfigList(), AllowNull = true })
+        section:AddDivider()
+        section:AddButton('Create config', function()
+            local name = Options.SaveManager_ConfigName.Value
+            if name:gsub(' ', '') == '' then
+                return self.Library:Notify('Invalid config name (empty)', 2)
+            end
+            local success, err = self:Save(name)
+            if not success then
+                return self.Library:Notify('Failed to save config: ' .. err)
+            end
+            self.Library:Notify(string.format('Created config %q', name))
+            Options.SaveManager_ConfigList:SetValues(self:RefreshConfigList())
+            Options.SaveManager_ConfigList:SetValue(nil)
+        end):AddButton('Load config', function()
+            local name = Options.SaveManager_ConfigList.Value
+            local success, err = self:Load(name)
+            if not success then
+                return self.Library:Notify('Failed to load config: ' .. err)
+            end
+            self.Library:Notify(string.format('Loaded config %q', name))
+        end)
+        section:AddButton('Overwrite config', function()
+            local name = Options.SaveManager_ConfigList.Value
+            local success, err = self:Save(name)
+            if not success then
+                return self.Library:Notify('Failed to overwrite config: ' .. err)
+            end
+            self.Library:Notify(string.format('Overwrote config %q', name))
+        end)
+        section:AddButton('Refresh list', function()
+            Options.SaveManager_ConfigList:SetValues(self:RefreshConfigList())
+            Options.SaveManager_ConfigList:SetValue(nil)
+        end)
+        section:AddButton('Set as autoload', function()
+            local name = Options.SaveManager_ConfigList.Value
+            writefile(self.Folder .. '/settings/autoload.txt', name)
+            SaveManager.AutoloadLabel:SetText('Current autoload config: ' .. name)
+            self.Library:Notify(string.format('Set %q to auto load', name))
+        end)
+        SaveManager.AutoloadLabel = section:AddLabel('Current autoload config: none', true)
+        if isfile(self.Folder .. '/settings/autoload.txt') then
+            local name = readfile(self.Folder .. '/settings/autoload.txt')
+            SaveManager.AutoloadLabel:SetText('Current autoload config: ' .. name)
+        end
+        SaveManager:SetIgnoreIndexes({ 'SaveManager_ConfigList', 'SaveManager_ConfigName' })
+    end
 
-		section:AddButton('Refresh List', function()
-			Options.SaveManager_ConfigList:SetValues(self:RefreshConfigList())
-		end)
-
-		section:AddButton('Set as Autoload', function()
-			local name = Options.SaveManager_ConfigList.Value
-			if name then
-				writefile(self.Folder .. '/settings/autoload.txt', name)
-				self.Library:Notify('Autoload set to: ' .. name, 3)
-			end
-		end)
-	end
-
-	function SaveManager:LoadAutoloadConfig()
-		local path = self.Folder .. '/settings/autoload.txt'
-		if isfile(path) then
-			local name = readfile(path)
-			if name and isfile(self.Folder .. '/settings/' .. name .. '.json') then
-				self:Load(name)
-			end
-		end
-	end
-
-	SaveManager:BuildFolderTree()
+    SaveManager:BuildFolderTree()
 end
 
 return SaveManager
