@@ -75,9 +75,10 @@ function SaveManager:RefreshConfigs()
     for i = 1, #files do
         local file = files[i]
         if file:sub(-5) == '.json' then
-            local pos = file:find('.json', 1, true)
-            local name = file:sub(self.Folder:len() + 11, pos - 1)
-            table.insert(configs, name)
+            local name = file:match("([^/\\]+)%.json$")
+            if name then
+                table.insert(configs, name)
+            end
         end
     end
     return configs
@@ -111,6 +112,7 @@ function SaveManager:BuildConfigSection(tab)
     assert(self.Library, 'Must set SaveManager.Library first!')
     local groupbox = tab:AddRightGroupbox('Config Manager')
     self:CreateConfigManager(groupbox)
+    return groupbox
 end
 
 function SaveManager:LoadAutoloadConfig()
