@@ -3061,24 +3061,14 @@ function Library:CreateWindow(...)
     };
 
     local Outer = Library:Create('Frame', {
-        AnchorPoint = Config.AnchorPoint;
-        BackgroundTransparency = 1;
+        AnchorPoint = Config.AnchorPoint,
+        BackgroundColor3 = Color3.new(0, 0, 0);
         BorderSizePixel = 0;
-        Position = Config.Position;
-        Size = Config.Size;
+        Position = Config.Position,
+        Size = Config.Size,
         Visible = false;
         ZIndex = 1;
         Parent = ScreenGui;
-    });
-
-    local BackgroundImage = Library:Create('ImageLabel', {
-        BackgroundTransparency = 1;
-        Image = 'rbxassetid://78711824094335';
-        Position = UDim2.new(0, 0, 0, 0);
-        Size = UDim2.fromScale(1, 1);
-        ScaleType = Enum.ScaleType.Fill;
-        ZIndex = 0;
-        Parent = Outer;
     });
 
     Library:MakeDraggable(Outer, 25);
