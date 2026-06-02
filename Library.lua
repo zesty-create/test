@@ -1535,8 +1535,8 @@ do
                 ZIndex = 5;
             });
 
-             = Library.MainColor;
-        BackgroundTransparency = 1;
+            local Inner = Library:Create('Frame', {
+                BackgroundColor3 = Library.MainColor;
                 BorderColor3 = Library.OutlineColor;
                 BorderMode = Enum.BorderMode.Inset;
                 Size = UDim2.new(1, 0, 1, 0);
@@ -3049,10 +3049,7 @@ function Library:CreateWindow(...)
     if type(Config.TabPadding) ~= 'number' then Config.TabPadding = 0 end
 
     if typeof(Config.Position) ~= 'UDim2' then Config.Position = UDim2.fromOffset(175, 50) end
-    
-    if type(Config.BackgroundImage) ~= 'string' then Config.BackgroundImage = 'rbxassetid://83923174247357' end
-    if type(Config.BackgroundImageTransparency) ~= 'number' then Config.BackgroundImageTransparency = 0 end
-    if type(Config.BackgroundDimTransparency) ~= 'number' then Config.BackgroundDimTransparency = 0.35 end
+    if typeof(Config.Size) ~= 'UDim2' then Config.Size = UDim2.fromOffset(550, 600) end
 
     if Config.Center then
         Config.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -3076,34 +3073,14 @@ function Library:CreateWindow(...)
 
     Library:MakeDraggable(Outer, 25);
 
-     = Library.MainColor;
-        BackgroundTransparency = 1;
+    local Inner = Library:Create('Frame', {
+        BackgroundColor3 = Library.MainColor;
         BorderColor3 = Library.AccentColor;
         BorderMode = Enum.BorderMode.Inset;
         Position = UDim2.new(0, 1, 0, 1);
         Size = UDim2.new(1, -2, 1, -2);
-        ZIndex = 1;        Parent = Outer;
-    });
-
-    local WindowBackground = Library:Create('ImageLabel', {
-        BackgroundTransparency = 1;
-        Image = Config.BackgroundImage;
-        ScaleType = Enum.ScaleType.Crop;
-        Position = UDim2.new(0, 0, 0, 0);
-        Size = UDim2.new(1, 0, 1, 0);
-        ImageTransparency = Config.BackgroundImageTransparency;
         ZIndex = 1;
-        Parent = Inner;
-    });
-
-    local WindowBackgroundDim = Library:Create('Frame', {
-        BackgroundColor3 = Color3.new(0, 0, 0);
-        BackgroundTransparency = Config.BackgroundDimTransparency;
-        BorderSizePixel = 0;
-        Position = UDim2.new(0, 0, 0, 0);
-        Size = UDim2.new(1, 0, 1, 0);
-        ZIndex = 1;
-        Parent = Inner;
+        Parent = Outer;
     });
 
     Library:AddToRegistry(Inner, {
@@ -3111,11 +3088,17 @@ function Library:CreateWindow(...)
         BorderColor3 = 'AccentColor';
     });
 
-     = 3;
+    local WindowLabel = Library:CreateLabel({
+        Position = UDim2.new(0, 7, 0, 0);
+        Size = UDim2.new(0, 0, 0, 25);
+        Text = Config.Title or '';
+        TextXAlignment = Enum.TextXAlignment.Left;
+        ZIndex = 1;
         Parent = Inner;
     });
 
-            BackgroundTransparency = 0.12;
+    local MainSectionOuter = Library:Create('Frame', {
+        BackgroundColor3 = Library.BackgroundColor;
         BorderColor3 = Library.OutlineColor;
         Position = UDim2.new(0, 8, 0, 25);
         Size = UDim2.new(1, -16, 1, -33);
@@ -3128,7 +3111,8 @@ function Library:CreateWindow(...)
         BorderColor3 = 'OutlineColor';
     });
 
-            BackgroundTransparency = 0.18;
+    local MainSectionInner = Library:Create('Frame', {
+        BackgroundColor3 = Library.BackgroundColor;
         BorderColor3 = Color3.new(0, 0, 0);
         BorderMode = Enum.BorderMode.Inset;
         Position = UDim2.new(0, 0, 0, 0);
@@ -3156,7 +3140,8 @@ function Library:CreateWindow(...)
         Parent = TabArea;
     });
 
-            BackgroundTransparency = 0.22;
+    local TabContainer = Library:Create('Frame', {
+        BackgroundColor3 = Library.MainColor;
         BorderColor3 = Library.OutlineColor;
         Position = UDim2.new(0, 8, 0, 30);
         Size = UDim2.new(1, -16, 1, -38);
