@@ -3694,6 +3694,19 @@ function Library:SetBackground(decalId)
         if MSO then MSO.BackgroundTransparency = 0; MSO.BorderSizePixel = 1; end;
         if MSI then MSI.BackgroundTransparency = 0; MSI.BorderSizePixel = 1; end;
         if TC then TC.BackgroundTransparency = 0; TC.BorderSizePixel = 1; end;
+
+        -- Restore all groupbox/tabbox backgrounds
+        local _skip2 = {[Inner]=true,[MSO]=true,[MSI]=true,[TC]=true};
+        for _, data in ipairs(Library.Registry) do
+            local inst = data.Instance;
+            local props = data.Properties;
+            if not _skip2[inst] and props.BackgroundColor3 == 'BackgroundColor' then
+                pcall(function()
+                    inst.BackgroundTransparency = 0;
+                    inst.BorderSizePixel = 1;
+                end);
+            end;
+        end;
         return;
     end;
 
@@ -3709,6 +3722,19 @@ function Library:SetBackground(decalId)
     if MSI then MSI.BackgroundTransparency = 1; MSI.BorderSizePixel = 0; end;
     if TC then TC.BackgroundTransparency = 1; TC.BorderSizePixel = 0; end;
 
+    -- Make all groupbox/tabbox backgrounds transparent
+    local _skip = {[Inner]=true,[MSO]=true,[MSI]=true,[TC]=true};
+    for _, data in ipairs(Library.Registry) do
+        local inst = data.Instance;
+        local props = data.Properties;
+        if not _skip[inst] and props.BackgroundColor3 == 'BackgroundColor' then
+            pcall(function()
+                inst.BackgroundTransparency = 0.5;
+                inst.BorderSizePixel = 0;
+            end);
+        end;
+    end;
+
     if not Library._BackgroundStroke then
         Library._BackgroundStroke = Library:Create('UIStroke', {
             Color = Library.AccentColor;
@@ -3721,22 +3747,8 @@ function Library:SetBackground(decalId)
 
     Library._BackgroundImage.Visible = true;
 
-    local cleanId = tostring(decalId):match('%d+') or decalId;
-    local ok, result = pcall(function()
-        return game:GetObjects('rbxassetid://' .. cleanId)
-    end)
-    if ok and result and result[1] then
-        local obj = result[1]
-        if obj:IsA('Decal') then
-            Library._BackgroundImage.Image = obj.Texture;
-        elseif obj:IsA('ImageLabel') or obj:IsA('ImageButton') then
-            Library._BackgroundImage.Image = obj.Image;
-        else
-            Library._BackgroundImage.Image = 'rbxassetid://' .. cleanId;
-        end
-    else
-        Library._BackgroundImage.Image = 'rbxassetid://' .. cleanId;
-    end
+    local cleanId = tostring(decalId):gsub('%s+', '');
+    Library._BackgroundImage.Image = 'rbxassetid://' .. cleanId;
 end;
 
 getgenv().Library = Library
