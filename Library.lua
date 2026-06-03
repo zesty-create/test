@@ -3073,6 +3073,7 @@ function Library:CreateWindow(...)
 
     Library:MakeDraggable(Outer, 25);
 
+    -- Background image: created BEFORE Inner so it renders behind all UI (same ZIndex, earlier creation = behind)
     Library._BackgroundImage = Library:Create('ImageLabel', {
         BackgroundTransparency = 1;
         BorderSizePixel = 0;
@@ -3673,6 +3674,7 @@ function Library:SetBackground(decalId)
     if not Inner then return end;
 
     if not decalId or decalId == '' then
+        -- Default: restore normal look
         if Library._BackgroundImage then
             Library._BackgroundImage.Visible = false;
             Library._BackgroundImage.Image = '';
@@ -3693,6 +3695,7 @@ function Library:SetBackground(decalId)
         if MSI then MSI.BackgroundTransparency = 0; MSI.BorderSizePixel = 1; end;
         if TC then TC.BackgroundTransparency = 0; TC.BorderSizePixel = 1; end;
 
+        -- Restore all groupbox/tabbox backgrounds
         local _skip2 = {[Inner]=true,[MSO]=true,[MSI]=true,[TC]=true};
         for _, data in ipairs(Library.Registry) do
             local inst = data.Instance;
@@ -3707,6 +3710,7 @@ function Library:SetBackground(decalId)
         return;
     end;
 
+    -- Custom: transparent backgrounds, image shows through
     Outer.BackgroundTransparency = 1;
     Inner.BackgroundTransparency = 1;
     Inner.BorderSizePixel = 0;
@@ -3718,6 +3722,7 @@ function Library:SetBackground(decalId)
     if MSI then MSI.BackgroundTransparency = 1; MSI.BorderSizePixel = 0; end;
     if TC then TC.BackgroundTransparency = 1; TC.BorderSizePixel = 0; end;
 
+    -- Make all groupbox/tabbox backgrounds transparent
     local _skip = {[Inner]=true,[MSO]=true,[MSI]=true,[TC]=true};
     for _, data in ipairs(Library.Registry) do
         local inst = data.Instance;
@@ -3743,21 +3748,7 @@ function Library:SetBackground(decalId)
     Library._BackgroundImage.Visible = true;
 
     local cleanId = tostring(decalId):match('%d+') or decalId;
-    local ok, result = pcall(function()
-        return game:GetObjects('rbxassetid://' .. cleanId)
-    end)
-    if ok and result and result[1] then
-        local obj = result[1]
-        if obj:IsA('Decal') then
-            Library._BackgroundImage.Image = obj.Texture;
-        elseif obj:IsA('ImageLabel') or obj:IsA('ImageButton') then
-            Library._BackgroundImage.Image = obj.Image;
-        else
-            Library._BackgroundImage.Image = 'rbxassetid://' .. cleanId;
-        end
-    else
-        Library._BackgroundImage.Image = 'rbxassetid://' .. cleanId;
-    end
+    Library._BackgroundImage.Image = 'rbxassetid://' .. cleanId;
 end;
 
 getgenv().Library = Library
