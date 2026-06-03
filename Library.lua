@@ -3654,6 +3654,7 @@ function Library:SetBackground(decalId)
     if not Inner then return end;
 
     if not decalId or decalId == '' then
+        -- Default: exactly like library.txt - no ImageLabel, normal Inner
         if Library._BackgroundImage then
             Library._BackgroundImage:Destroy();
             Library._BackgroundImage = nil;
@@ -3672,7 +3673,8 @@ function Library:SetBackground(decalId)
         });
         return;
     end;
-    
+
+    -- Custom: transparent Outer/Inner, UIStroke, ImageLabel
     Outer.BackgroundTransparency = 1;
     Inner.BackgroundTransparency = 1;
     Inner.BorderSizePixel = 0;
@@ -3695,12 +3697,12 @@ function Library:SetBackground(decalId)
         Library._BackgroundImage = Library:Create('ImageLabel', {
             BackgroundTransparency = 1;
             BorderSizePixel = 0;
-            Size = UDim2.new(1, -2, 1, -2);
-            Position = UDim2.new(0, 1, 0, 1);
+            Size = UDim2.new(1, 0, 1, 0);
+            Position = UDim2.new(0, 0, 0, 0);
             Image = '';
             ScaleType = Enum.ScaleType.Crop;
             ZIndex = 1;
-            Parent = Outer;
+            Parent = Inner;
         });
     end;
 
