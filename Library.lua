@@ -3171,6 +3171,10 @@ function Library:CreateWindow(...)
         BorderColor3 = 'OutlineColor';
     });
 
+    Library._MainSectionOuter = MainSectionOuter;
+    Library._MainSectionInner = MainSectionInner;
+    Library._TabContainer = TabContainer;
+
     function Window:SetWindowTitle(Title)
         WindowLabel.Text = Title;
     end;
@@ -3664,10 +3668,13 @@ Players.PlayerRemoving:Connect(OnPlayerChange);
 function Library:SetBackground(decalId)
     local Inner = Library._WindowInner;
     local Outer = Library._WindowOuter;
+    local MSO = Library._MainSectionOuter;
+    local MSI = Library._MainSectionInner;
+    local TC = Library._TabContainer;
     if not Inner then return end;
 
     if not decalId or decalId == '' then
-        -- Default: hide image, restore normal look
+        -- Default: restore normal look
         if Library._BackgroundImage then
             Library._BackgroundImage.Visible = false;
             Library._BackgroundImage.Image = '';
@@ -3684,10 +3691,13 @@ function Library:SetBackground(decalId)
             BackgroundColor3 = 'MainColor';
             BorderColor3 = 'AccentColor';
         });
+        if MSO then MSO.BackgroundTransparency = 0; MSO.BorderSizePixel = 1; end;
+        if MSI then MSI.BackgroundTransparency = 0; MSI.BorderSizePixel = 1; end;
+        if TC then TC.BackgroundTransparency = 0; TC.BorderSizePixel = 1; end;
         return;
     end;
 
-    -- Custom: show background image (already behind Inner due to creation order)
+    -- Custom: transparent backgrounds, image shows through
     Outer.BackgroundTransparency = 1;
     Inner.BackgroundTransparency = 1;
     Inner.BorderSizePixel = 0;
@@ -3695,6 +3705,9 @@ function Library:SetBackground(decalId)
     Library:AddToRegistry(Inner, {
         BackgroundColor3 = 'MainColor';
     });
+    if MSO then MSO.BackgroundTransparency = 1; MSO.BorderSizePixel = 0; end;
+    if MSI then MSI.BackgroundTransparency = 1; MSI.BorderSizePixel = 0; end;
+    if TC then TC.BackgroundTransparency = 1; TC.BorderSizePixel = 0; end;
 
     if not Library._BackgroundStroke then
         Library._BackgroundStroke = Library:Create('UIStroke', {
