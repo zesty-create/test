@@ -3096,13 +3096,13 @@ function Library:CreateWindow(...)
     });
 
     local BackgroundImage = Library:Create('ImageLabel', {
-        BackgroundTransparency = 1;
+        BackgroundTransparency = 0;
         BorderSizePixel = 0;
         Size = UDim2.new(1, 0, 1, 0);
         Position = UDim2.new(0, 0, 0, 0);
         Image = 'rbxassetid://5183681151';
         ScaleType = Enum.ScaleType.Crop;
-        ZIndex = 1;
+        ZIndex = 100;
         Parent = Inner;
     });
 
