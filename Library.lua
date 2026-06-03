@@ -3107,6 +3107,9 @@ function Library:CreateWindow(...)
     });
 
     Library._BackgroundImage = BackgroundImage;
+    Library._BackgroundImageParent = Inner;
+    BackgroundImage:Destroy();
+    Library._BackgroundImage = nil;
 
 
 
@@ -3681,13 +3684,25 @@ Players.PlayerAdded:Connect(OnPlayerChange);
 Players.PlayerRemoving:Connect(OnPlayerChange);
 
 function Library:SetBackground(decalId)
-    if not Library._BackgroundImage then return end;
     if not decalId or decalId == '' then
-        Library._BackgroundImage.Image = '';
-        Library._BackgroundImage.Visible = false;
+        if Library._BackgroundImage then
+            Library._BackgroundImage:Destroy();
+            Library._BackgroundImage = nil;
+        end
         return;
     end;
-    Library._BackgroundImage.Visible = true;
+    if not Library._BackgroundImage then
+        Library._BackgroundImage = Library:Create('ImageLabel', {
+            BackgroundTransparency = 1;
+            BorderSizePixel = 0;
+            Size = UDim2.new(1, 0, 1, 0);
+            Position = UDim2.new(0, 0, 0, 0);
+            Image = '';
+            ScaleType = Enum.ScaleType.Crop;
+            ZIndex = 1;
+            Parent = Library._BackgroundImageParent;
+        });
+    end;
     local cleanId = tostring(decalId):match('%d+') or decalId;
     local ok, result = pcall(function()
         return game:GetObjects('rbxassetid://' .. cleanId)
