@@ -3063,7 +3063,6 @@ function Library:CreateWindow(...)
     local Outer = Library:Create('Frame', {
         AnchorPoint = Config.AnchorPoint,
         BackgroundColor3 = Color3.new(0, 0, 0);
-        BackgroundTransparency = 1;
         BorderSizePixel = 0;
         Position = Config.Position,
         Size = Config.Size,
@@ -3076,56 +3075,21 @@ function Library:CreateWindow(...)
 
     local Inner = Library:Create('Frame', {
         BackgroundColor3 = Library.MainColor;
-        BackgroundTransparency = 1;
-        BorderSizePixel = 0;
+        BorderColor3 = Library.AccentColor;
+        BorderMode = Enum.BorderMode.Inset;
         Position = UDim2.new(0, 1, 0, 1);
         Size = UDim2.new(1, -2, 1, -2);
         ZIndex = 1;
         Parent = Outer;
     });
 
-    local InnerStroke = Library:Create('UIStroke', {
-        Color = Library.AccentColor;
-        Thickness = 1;
-        ApplyStrokeMode = Enum.ApplyStrokeMode.Border;
-        Parent = Inner;
-    });
-
-    Library:AddToRegistry(InnerStroke, {
-        Color = 'AccentColor';
-    });
-
-    local BackgroundImage = Library:Create('ImageLabel', {
-        BackgroundTransparency = 1;
-        BorderSizePixel = 0;
-        Size = UDim2.new(1, 0, 1, 0);
-        Position = UDim2.new(0, 0, 0, 0);
-        Image = '';
-        ScaleType = Enum.ScaleType.Crop;
-        ZIndex = 1;
-        Parent = Inner;
-    });
-
-    Library._BackgroundImage = BackgroundImage;
-    Library._BackgroundImageParent = Inner;
-    Library._BackgroundImageInner = Inner;
-    Library._BackgroundImageOuter = Outer;
-    Library._BackgroundImageStroke = InnerStroke;
-    BackgroundImage:Destroy();
-    Library._BackgroundImage = nil;
-    -- Default state: restore to library.txt style
-    Outer.BackgroundTransparency = 0;
-    Inner.BackgroundTransparency = 0;
-    Inner.BorderColor3 = Library.AccentColor;
-    Library:RemoveFromRegistry(InnerStroke);
-    InnerStroke:Destroy();
-    Library._BackgroundImageStroke = nil;
-
-
-
     Library:AddToRegistry(Inner, {
         BackgroundColor3 = 'MainColor';
+        BorderColor3 = 'AccentColor';
     });
+
+    Library._WindowInner = Inner;
+    Library._WindowOuter = Outer;
 
     local WindowLabel = Library:CreateLabel({
         Position = UDim2.new(0, 7, 0, 0);
@@ -3138,7 +3102,6 @@ function Library:CreateWindow(...)
 
     local MainSectionOuter = Library:Create('Frame', {
         BackgroundColor3 = Library.BackgroundColor;
-        BackgroundTransparency = 1;
         BorderColor3 = Library.OutlineColor;
         Position = UDim2.new(0, 8, 0, 25);
         Size = UDim2.new(1, -16, 1, -33);
@@ -3153,7 +3116,6 @@ function Library:CreateWindow(...)
 
     local MainSectionInner = Library:Create('Frame', {
         BackgroundColor3 = Library.BackgroundColor;
-        BackgroundTransparency = 1;
         BorderColor3 = Color3.new(0, 0, 0);
         BorderMode = Enum.BorderMode.Inset;
         Position = UDim2.new(0, 0, 0, 0);
@@ -3183,7 +3145,6 @@ function Library:CreateWindow(...)
 
     local TabContainer = Library:Create('Frame', {
         BackgroundColor3 = Library.MainColor;
-        BackgroundTransparency = 1;
         BorderColor3 = Library.OutlineColor;
         Position = UDim2.new(0, 8, 0, 30);
         Size = UDim2.new(1, -16, 1, -38);
@@ -3211,7 +3172,6 @@ function Library:CreateWindow(...)
 
         local TabButton = Library:Create('Frame', {
             BackgroundColor3 = Library.BackgroundColor;
-            BackgroundTransparency = 0.5;
             BorderColor3 = Library.OutlineColor;
             Size = UDim2.new(0, TabButtonWidth + 8 + 4, 1, 0);
             ZIndex = 1;
@@ -3332,7 +3292,6 @@ function Library:CreateWindow(...)
 
             local BoxOuter = Library:Create('Frame', {
                 BackgroundColor3 = Library.BackgroundColor;
-                BackgroundTransparency = 0.5;
                 BorderColor3 = Library.OutlineColor;
                 BorderMode = Enum.BorderMode.Inset;
                 Size = UDim2.new(1, 0, 0, 507 + 2);
@@ -3347,7 +3306,6 @@ function Library:CreateWindow(...)
 
             local BoxInner = Library:Create('Frame', {
                 BackgroundColor3 = Library.BackgroundColor;
-                BackgroundTransparency = 0.5;
                 BorderColor3 = Color3.new(0, 0, 0);
                 Size = UDim2.new(1, -2, 1, -2);
                 Position = UDim2.new(0, 1, 0, 1);
@@ -3429,7 +3387,6 @@ function Library:CreateWindow(...)
 
             local BoxOuter = Library:Create('Frame', {
                 BackgroundColor3 = Library.BackgroundColor;
-                BackgroundTransparency = 0.5;
                 BorderColor3 = Library.OutlineColor;
                 BorderMode = Enum.BorderMode.Inset;
                 Size = UDim2.new(1, 0, 0, 0);
@@ -3444,7 +3401,6 @@ function Library:CreateWindow(...)
 
             local BoxInner = Library:Create('Frame', {
                 BackgroundColor3 = Library.BackgroundColor;
-                BackgroundTransparency = 0.5;
                 BorderColor3 = Color3.new(0, 0, 0);
                 Size = UDim2.new(1, -2, 1, -2);
                 Position = UDim2.new(0, 1, 0, 1);
@@ -3488,7 +3444,6 @@ function Library:CreateWindow(...)
 
                 local Button = Library:Create('Frame', {
                     BackgroundColor3 = Library.MainColor;
-                    BackgroundTransparency = 0.5;
                     BorderColor3 = Color3.new(0, 0, 0);
                     Size = UDim2.new(0.5, 0, 1, 0);
                     ZIndex = 6;
@@ -3694,52 +3649,50 @@ Players.PlayerAdded:Connect(OnPlayerChange);
 Players.PlayerRemoving:Connect(OnPlayerChange);
 
 function Library:SetBackground(decalId)
+    local Inner = Library._WindowInner;
+    local Outer = Library._WindowOuter;
+    if not Inner then return end;
+
     if not decalId or decalId == '' then
-        -- Default: destroy ImageLabel, restore Outer/Inner like library.txt (no transparency, border instead of UIStroke)
+        -- Default: exactly like library.txt - no ImageLabel, normal Inner
         if Library._BackgroundImage then
             Library._BackgroundImage:Destroy();
             Library._BackgroundImage = nil;
         end
-        if Library._BackgroundImageStroke then
-            Library._BackgroundImageStroke:Destroy();
-            Library._BackgroundImageStroke = nil;
+        if Library._BackgroundStroke then
+            Library._BackgroundStroke:Destroy();
+            Library._BackgroundStroke = nil;
         end
-        if Library._BackgroundImageOuter then
-            Library._BackgroundImageOuter.BackgroundTransparency = 0;
-        end
-        if Library._BackgroundImageInner then
-            Library._BackgroundImageInner.BackgroundTransparency = 0;
-            Library._BackgroundImageInner.BorderSizePixel = 1;
-            Library._BackgroundImageInner.BorderColor3 = Library.AccentColor;
-            Library:RemoveFromRegistry(Library._BackgroundImageInner);
-            Library:AddToRegistry(Library._BackgroundImageInner, {
-                BackgroundColor3 = 'MainColor';
-                BorderColor3 = 'AccentColor';
-            });
-        end
+        Outer.BackgroundTransparency = 0;
+        Inner.BackgroundTransparency = 0;
+        Inner.BorderSizePixel = 1;
+        Library:RemoveFromRegistry(Inner);
+        Library:AddToRegistry(Inner, {
+            BackgroundColor3 = 'MainColor';
+            BorderColor3 = 'AccentColor';
+        });
         return;
     end;
-    -- Custom: Outer/Inner transparent, UIStroke border, ImageLabel background
-    if Library._BackgroundImageOuter then
-        Library._BackgroundImageOuter.BackgroundTransparency = 1;
-    end
-    if Library._BackgroundImageInner then
-        Library._BackgroundImageInner.BackgroundTransparency = 1;
-        Library._BackgroundImageInner.BorderSizePixel = 0;
-        Library:RemoveFromRegistry(Library._BackgroundImageInner);
-        Library:AddToRegistry(Library._BackgroundImageInner, {
-            BackgroundColor3 = 'MainColor';
-        });
-    end
-    if not Library._BackgroundImageStroke then
-        Library._BackgroundImageStroke = Library:Create('UIStroke', {
+
+    -- Custom: transparent Outer/Inner, UIStroke, ImageLabel
+    Outer.BackgroundTransparency = 1;
+    Inner.BackgroundTransparency = 1;
+    Inner.BorderSizePixel = 0;
+    Library:RemoveFromRegistry(Inner);
+    Library:AddToRegistry(Inner, {
+        BackgroundColor3 = 'MainColor';
+    });
+
+    if not Library._BackgroundStroke then
+        Library._BackgroundStroke = Library:Create('UIStroke', {
             Color = Library.AccentColor;
             Thickness = 1;
             ApplyStrokeMode = Enum.ApplyStrokeMode.Border;
-            Parent = Library._BackgroundImageInner;
+            Parent = Inner;
         });
-        Library:AddToRegistry(Library._BackgroundImageStroke, { Color = 'AccentColor' });
-    end
+        Library:AddToRegistry(Library._BackgroundStroke, { Color = 'AccentColor' });
+    end;
+
     if not Library._BackgroundImage then
         Library._BackgroundImage = Library:Create('ImageLabel', {
             BackgroundTransparency = 1;
@@ -3749,9 +3702,10 @@ function Library:SetBackground(decalId)
             Image = '';
             ScaleType = Enum.ScaleType.Crop;
             ZIndex = 1;
-            Parent = Library._BackgroundImageParent;
+            Parent = Inner;
         });
     end;
+
     local cleanId = tostring(decalId):match('%d+') or decalId;
     local ok, result = pcall(function()
         return game:GetObjects('rbxassetid://' .. cleanId)
