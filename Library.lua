@@ -3697,14 +3697,17 @@ function Library:SetBackground(decalId)
 
         -- Restore all groupbox/tabbox backgrounds
         local _skip2 = {[Inner]=true,[MSO]=true,[MSI]=true,[TC]=true};
-        for _, data in ipairs(Library.Registry) do
-            local inst = data.Instance;
-            local props = data.Properties;
-            if not _skip2[inst] and props.BackgroundColor3 == 'BackgroundColor' then
-                pcall(function()
-                    inst.BackgroundTransparency = 0;
-                    inst.BorderSizePixel = 1;
-                end);
+        for i = 1, #Library.Registry do
+            local data = Library.Registry[i];
+            if data then
+                local inst = data.Instance;
+                local props = data.Properties;
+                if not _skip2[inst] and props.BackgroundColor3 == 'BackgroundColor' then
+                    pcall(function()
+                        inst.BackgroundTransparency = 0;
+                        inst.BorderSizePixel = 1;
+                    end);
+                end;
             end;
         end;
         return;
@@ -3724,14 +3727,17 @@ function Library:SetBackground(decalId)
 
     -- Make all groupbox/tabbox backgrounds transparent
     local _skip = {[Inner]=true,[MSO]=true,[MSI]=true,[TC]=true};
-    for _, data in ipairs(Library.Registry) do
-        local inst = data.Instance;
-        local props = data.Properties;
-        if not _skip[inst] and props.BackgroundColor3 == 'BackgroundColor' then
-            pcall(function()
-                inst.BackgroundTransparency = 0.5;
-                inst.BorderSizePixel = 0;
-            end);
+    for i = 1, #Library.Registry do
+        local data = Library.Registry[i];
+        if data then
+            local inst = data.Instance;
+            local props = data.Properties;
+            if not _skip[inst] and props.BackgroundColor3 == 'BackgroundColor' then
+                pcall(function()
+                    inst.BackgroundTransparency = 0.5;
+                    inst.BorderSizePixel = 0;
+                end);
+            end;
         end;
     end;
 
@@ -3748,7 +3754,22 @@ function Library:SetBackground(decalId)
     Library._BackgroundImage.Visible = true;
 
     local cleanId = tostring(decalId):gsub('%s+', '');
-    Library._BackgroundImage.Image = 'rbxassetid://' .. cleanId;
+    local imageUrl = 'rbxassetid://' .. cleanId;
+    local ok, result = pcall(function()
+        return game:GetObjects(imageUrl)
+    end)
+    if ok and result and result[1] then
+        local obj = result[1]
+        if obj:IsA('Decal') then
+            Library._BackgroundImage.Image = obj.Texture;
+        elseif obj:IsA('ImageLabel') or obj:IsA('ImageButton') then
+            Library._BackgroundImage.Image = obj.Image;
+        else
+            Library._BackgroundImage.Image = imageUrl;
+        end
+    else
+        Library._BackgroundImage.Image = imageUrl;
+    end
 end;
 
 getgenv().Library = Library
