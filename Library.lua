@@ -3100,7 +3100,7 @@ function Library:CreateWindow(...)
         BorderSizePixel = 0;
         Size = UDim2.new(1, 0, 1, 0);
         Position = UDim2.new(0, 0, 0, 0);
-        Image = 'rbxassetid://78711824094335';
+        Image = '';
         ScaleType = Enum.ScaleType.Crop;
         ZIndex = 1;
         Parent = Inner;
@@ -3110,7 +3110,7 @@ function Library:CreateWindow(...)
 
     function Library:SetBackgroundImage(id)
         if not id or id == '' then
-            Library._BackgroundImage.Image = 'rbxassetid://78711824094335';
+            Library._BackgroundImage.Image = '';
             return;
         end
         local numId = tostring(id):match('%d+');
