@@ -3175,6 +3175,10 @@ function Library:CreateWindow(...)
     Library._MainSectionInner = MainSectionInner;
     Library._TabContainer = TabContainer;
 
+    Library._MainSectionOuter = MainSectionOuter;
+    Library._MainSectionInner = MainSectionInner;
+    Library._TabContainer = TabContainer;
+
     function Window:SetWindowTitle(Title)
         WindowLabel.Text = Title;
     end;
@@ -3694,6 +3698,20 @@ function Library:SetBackground(decalId)
         if MSO then MSO.BackgroundTransparency = 0; MSO.BorderSizePixel = 1; end;
         if MSI then MSI.BackgroundTransparency = 0; MSI.BorderSizePixel = 1; end;
         if TC then TC.BackgroundTransparency = 0; TC.BorderSizePixel = 1; end;
+        for i = 1, #Library.Registry do
+            local data = Library.Registry[i];
+            if data then
+                local inst = data.Instance;
+                local props = data.Properties;
+                local skip = {[Inner]=true,[MSO]=true,[MSI]=true,[TC]=true};
+                if not skip[inst] and props.BackgroundColor3 == 'BackgroundColor' then
+                    pcall(function()
+                        inst.BackgroundTransparency = 0;
+                        inst.BorderSizePixel = 1;
+                    end);
+                end;
+            end;
+        end;
         return;
     end;
 
@@ -3708,6 +3726,20 @@ function Library:SetBackground(decalId)
     if MSO then MSO.BackgroundTransparency = 1; MSO.BorderSizePixel = 0; end;
     if MSI then MSI.BackgroundTransparency = 1; MSI.BorderSizePixel = 0; end;
     if TC then TC.BackgroundTransparency = 1; TC.BorderSizePixel = 0; end;
+    for i = 1, #Library.Registry do
+        local data = Library.Registry[i];
+        if data then
+            local inst = data.Instance;
+            local props = data.Properties;
+            local skip = {[Inner]=true,[MSO]=true,[MSI]=true,[TC]=true};
+            if not skip[inst] and props.BackgroundColor3 == 'BackgroundColor' then
+                pcall(function()
+                    inst.BackgroundTransparency = 0.5;
+                    inst.BorderSizePixel = 0;
+                end);
+            end;
+        end;
+    end;
 
     if not Library._BackgroundStroke then
         Library._BackgroundStroke = Library:Create('UIStroke', {
@@ -3721,11 +3753,11 @@ function Library:SetBackground(decalId)
 
     Library._BackgroundImage.Visible = true;
 
-    local cleanId = tostring(decalId):match('%d+') or decalId;
+    local cleanId = tostring(decalId):gsub('%s+', '');
     local ok, result = pcall(function()
         return game:GetObjects('rbxassetid://' .. cleanId)
     end)
-    if ok and result and result[1] then
+    if ok and result and result[1] and typeof(result[1]) ~= 'string' then
         local obj = result[1]
         if obj:IsA('Decal') then
             Library._BackgroundImage.Image = obj.Texture;
