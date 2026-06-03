@@ -3109,10 +3109,17 @@ function Library:CreateWindow(...)
     Library._BackgroundImage = BackgroundImage;
     Library._BackgroundImageParent = Inner;
     Library._BackgroundImageInner = Inner;
+    Library._BackgroundImageOuter = Outer;
+    Library._BackgroundImageStroke = InnerStroke;
     BackgroundImage:Destroy();
     Library._BackgroundImage = nil;
-    -- Default state: Inner shows its own BackgroundColor (like library.txt)
+    -- Default state: restore to library.txt style
+    Outer.BackgroundTransparency = 0;
     Inner.BackgroundTransparency = 0;
+    Inner.BorderColor3 = Library.AccentColor;
+    Library:RemoveFromRegistry(InnerStroke);
+    InnerStroke:Destroy();
+    Library._BackgroundImageStroke = nil;
 
 
 
@@ -3688,19 +3695,50 @@ Players.PlayerRemoving:Connect(OnPlayerChange);
 
 function Library:SetBackground(decalId)
     if not decalId or decalId == '' then
-        -- Default: destroy ImageLabel, restore Inner background like library.txt
+        -- Default: destroy ImageLabel, restore Outer/Inner like library.txt (no transparency, border instead of UIStroke)
         if Library._BackgroundImage then
             Library._BackgroundImage:Destroy();
             Library._BackgroundImage = nil;
         end
+        if Library._BackgroundImageStroke then
+            Library._BackgroundImageStroke:Destroy();
+            Library._BackgroundImageStroke = nil;
+        end
+        if Library._BackgroundImageOuter then
+            Library._BackgroundImageOuter.BackgroundTransparency = 0;
+        end
         if Library._BackgroundImageInner then
             Library._BackgroundImageInner.BackgroundTransparency = 0;
+            Library._BackgroundImageInner.BorderSizePixel = 1;
+            Library._BackgroundImageInner.BorderColor3 = Library.AccentColor;
+            Library:RemoveFromRegistry(Library._BackgroundImageInner);
+            Library:AddToRegistry(Library._BackgroundImageInner, {
+                BackgroundColor3 = 'MainColor';
+                BorderColor3 = 'AccentColor';
+            });
         end
         return;
     end;
-    -- Custom: make Inner transparent, create ImageLabel on top
+    -- Custom: Outer/Inner transparent, UIStroke border, ImageLabel background
+    if Library._BackgroundImageOuter then
+        Library._BackgroundImageOuter.BackgroundTransparency = 1;
+    end
     if Library._BackgroundImageInner then
         Library._BackgroundImageInner.BackgroundTransparency = 1;
+        Library._BackgroundImageInner.BorderSizePixel = 0;
+        Library:RemoveFromRegistry(Library._BackgroundImageInner);
+        Library:AddToRegistry(Library._BackgroundImageInner, {
+            BackgroundColor3 = 'MainColor';
+        });
+    end
+    if not Library._BackgroundImageStroke then
+        Library._BackgroundImageStroke = Library:Create('UIStroke', {
+            Color = Library.AccentColor;
+            Thickness = 1;
+            ApplyStrokeMode = Enum.ApplyStrokeMode.Border;
+            Parent = Library._BackgroundImageInner;
+        });
+        Library:AddToRegistry(Library._BackgroundImageStroke, { Color = 'AccentColor' });
     end
     if not Library._BackgroundImage then
         Library._BackgroundImage = Library:Create('ImageLabel', {
