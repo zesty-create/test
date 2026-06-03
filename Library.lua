@@ -3108,8 +3108,11 @@ function Library:CreateWindow(...)
 
     Library._BackgroundImage = BackgroundImage;
     Library._BackgroundImageParent = Inner;
+    Library._BackgroundImageInner = Inner;
     BackgroundImage:Destroy();
     Library._BackgroundImage = nil;
+    -- Default state: Inner shows its own BackgroundColor (like library.txt)
+    Inner.BackgroundTransparency = 0;
 
 
 
@@ -3685,12 +3688,20 @@ Players.PlayerRemoving:Connect(OnPlayerChange);
 
 function Library:SetBackground(decalId)
     if not decalId or decalId == '' then
+        -- Default: destroy ImageLabel, restore Inner background like library.txt
         if Library._BackgroundImage then
             Library._BackgroundImage:Destroy();
             Library._BackgroundImage = nil;
         end
+        if Library._BackgroundImageInner then
+            Library._BackgroundImageInner.BackgroundTransparency = 0;
+        end
         return;
     end;
+    -- Custom: make Inner transparent, create ImageLabel on top
+    if Library._BackgroundImageInner then
+        Library._BackgroundImageInner.BackgroundTransparency = 1;
+    end
     if not Library._BackgroundImage then
         Library._BackgroundImage = Library:Create('ImageLabel', {
             BackgroundTransparency = 1;
