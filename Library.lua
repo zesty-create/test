@@ -3079,7 +3079,7 @@ function Library:CreateWindow(...)
         BorderMode = Enum.BorderMode.Inset;
         Position = UDim2.new(0, 1, 0, 1);
         Size = UDim2.new(1, -2, 1, -2);
-        ZIndex = 1;
+        ZIndex = 2;
         Parent = Outer;
     });
 
@@ -3674,9 +3674,9 @@ function Library:SetBackground(decalId)
         return;
     end;
 
-    -- Custom: transparent Outer, normal Inner, UIStroke, ImageLabel behind Inner
+    -- Custom: transparent Outer/Inner, UIStroke on Outer, ImageLabel behind Inner
     Outer.BackgroundTransparency = 1;
-    Inner.BackgroundTransparency = 0;
+    Inner.BackgroundTransparency = 1;
     Inner.BorderSizePixel = 0;
     Library:RemoveFromRegistry(Inner);
     Library:AddToRegistry(Inner, {
@@ -3697,8 +3697,8 @@ function Library:SetBackground(decalId)
         Library._BackgroundImage = Library:Create('ImageLabel', {
             BackgroundTransparency = 1;
             BorderSizePixel = 0;
-            Size = UDim2.new(1, -2, 1, -2);
-            Position = UDim2.new(0, 1, 0, 1);
+            Size = UDim2.new(1, 0, 1, 0);
+            Position = UDim2.new(0, 0, 0, 0);
             Image = '';
             ScaleType = Enum.ScaleType.Crop;
             ZIndex = 1;
