@@ -3704,6 +3704,13 @@ function Library:SetBackground(decalId)
             ZIndex = 1;
             Parent = Inner;
         });
+        -- Re-parent all other children so ImageLabel is first (renders behind)
+        for _, child in ipairs(Inner:GetChildren()) do
+            if child ~= Library._BackgroundImage and not child:IsA('UIStroke') then
+                child.Parent = nil;
+                child.Parent = Inner;
+            end
+        end
     end;
 
     local cleanId = tostring(decalId):match('%d+') or decalId;
