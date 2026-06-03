@@ -3767,43 +3767,7 @@ function Library:SetBackground(decalId)
     end
 
     Library._BackgroundImage.Image = imageToSet;
-    task.defer(function()
-        if not Library._BackgroundImage or not Library._BackgroundImage.Parent then return end;
-        local contentState = Library._BackgroundImage.ImageContent;
-        local deadline = tick() + 5;
-        while tick() < deadline do
-            if Library._BackgroundImage.IsLoaded then break end;
-            task.wait(0.1);
-        end;
-        if not Library._BackgroundImage.IsLoaded then
-            Library._BackgroundImage.Visible = false;
-            Library._BackgroundImage.Image = '';
-            if Library._BackgroundStroke then
-                Library._BackgroundStroke:Destroy();
-                Library._BackgroundStroke = nil;
-            end;
-            Outer.BackgroundTransparency = 0;
-            Inner.BackgroundTransparency = 0;
-            Inner.BorderSizePixel = 1;
-            Library:RemoveFromRegistry(Inner);
-            Library:AddToRegistry(Inner, {
-                BackgroundColor3 = 'MainColor';
-                BorderColor3 = 'AccentColor';
-            });
-            if MSO then MSO.BackgroundTransparency = 0; MSO.BorderSizePixel = 1; end;
-            if MSI then MSI.BackgroundTransparency = 0; MSI.BorderSizePixel = 1; end;
-            if TC then TC.BackgroundTransparency = 0; TC.BorderSizePixel = 1; end;
-            for i = 1, #Library.Registry do
-                local data = Library.Registry[i];
-                if data then
-                    local inst = data.Instance;
-                    local props = data.Properties;
-                    local skip = {[Inner]=true,[MSO]=true,[MSI]=true,[TC]=true};
-                    if not skip[inst] and props.BackgroundColor3 == 'BackgroundColor' then
-                        pcall(function()
-                            inst.BackgroundTransparency = 0;
-                            inst.BorderSizePixel = 1;
-                        end);
+    Library._BackgroundImage.Visible = true;
                     end;
                 end;
             end;
