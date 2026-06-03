@@ -3768,13 +3768,6 @@ function Library:SetBackground(decalId)
 
     Library._BackgroundImage.Image = imageToSet;
     Library._BackgroundImage.Visible = true;
-                    end;
-                end;
-            end;
-        else
-            Library._BackgroundImage.Visible = true;
-        end;
-    end);
 end;
 
 getgenv().Library = Library
