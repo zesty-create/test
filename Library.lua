@@ -3088,6 +3088,9 @@ function Library:CreateWindow(...)
         BorderColor3 = 'AccentColor';
     });
 
+    Library._WindowInner = Inner;
+    Library._WindowOuter = Outer;
+
     local WindowLabel = Library:CreateLabel({
         Position = UDim2.new(0, 7, 0, 0);
         Size = UDim2.new(0, 0, 0, 25);
@@ -3644,6 +3647,82 @@ end
 
 Players.PlayerAdded:Connect(OnPlayerChange);
 Players.PlayerRemoving:Connect(OnPlayerChange);
+
+function Library:SetBackground(decalId)
+    local Inner = Library._WindowInner;
+    local Outer = Library._WindowOuter;
+    if not Inner then return end;
+
+    if not decalId or decalId == '' then
+        -- Default: exactly like library.txt - no ImageLabel, normal Inner
+        if Library._BackgroundImage then
+            Library._BackgroundImage:Destroy();
+            Library._BackgroundImage = nil;
+        end
+        if Library._BackgroundStroke then
+            Library._BackgroundStroke:Destroy();
+            Library._BackgroundStroke = nil;
+        end
+        Outer.BackgroundTransparency = 0;
+        Inner.BackgroundTransparency = 0;
+        Inner.BorderSizePixel = 1;
+        Library:RemoveFromRegistry(Inner);
+        Library:AddToRegistry(Inner, {
+            BackgroundColor3 = 'MainColor';
+            BorderColor3 = 'AccentColor';
+        });
+        return;
+    end;
+
+    -- Custom: transparent Outer/Inner, UIStroke, ImageLabel
+    Outer.BackgroundTransparency = 1;
+    Inner.BackgroundTransparency = 1;
+    Inner.BorderSizePixel = 0;
+    Library:RemoveFromRegistry(Inner);
+    Library:AddToRegistry(Inner, {
+        BackgroundColor3 = 'MainColor';
+    });
+
+    if not Library._BackgroundStroke then
+        Library._BackgroundStroke = Library:Create('UIStroke', {
+            Color = Library.AccentColor;
+            Thickness = 1;
+            ApplyStrokeMode = Enum.ApplyStrokeMode.Border;
+            Parent = Inner;
+        });
+        Library:AddToRegistry(Library._BackgroundStroke, { Color = 'AccentColor' });
+    end;
+
+    if not Library._BackgroundImage then
+        Library._BackgroundImage = Library:Create('ImageLabel', {
+            BackgroundTransparency = 1;
+            BorderSizePixel = 0;
+            Size = UDim2.new(1, 0, 1, 0);
+            Position = UDim2.new(0, 0, 0, 0);
+            Image = '';
+            ScaleType = Enum.ScaleType.Crop;
+            ZIndex = 1;
+            Parent = Inner;
+        });
+    end;
+
+    local cleanId = tostring(decalId):match('%d+') or decalId;
+    local ok, result = pcall(function()
+        return game:GetObjects('rbxassetid://' .. cleanId)
+    end)
+    if ok and result and result[1] then
+        local obj = result[1]
+        if obj:IsA('Decal') then
+            Library._BackgroundImage.Image = obj.Texture;
+        elseif obj:IsA('ImageLabel') or obj:IsA('ImageButton') then
+            Library._BackgroundImage.Image = obj.Image;
+        else
+            Library._BackgroundImage.Image = 'rbxassetid://' .. cleanId;
+        end
+    else
+        Library._BackgroundImage.Image = 'rbxassetid://' .. cleanId;
+    end
+end;
 
 getgenv().Library = Library
 return Library
