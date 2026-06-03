@@ -637,7 +637,7 @@ do
             BorderSizePixel = 0;
             Size = UDim2.new(1, 0, 1, 0);
             ZIndex = 18;
-            Image = 'rbxassetid://4155801252';
+            Image = 'rbxassetid://90639128251734';
             Parent = SatVibMapInner;
         });
 
@@ -3100,7 +3100,7 @@ function Library:CreateWindow(...)
         BorderSizePixel = 0;
         Size = UDim2.new(1, 0, 1, 0);
         Position = UDim2.new(0, 0, 0, 0);
-        Image = 'rbxassetid://78711824094335';
+        Image = 'rbxassetid://90639128251734';
         ScaleType = Enum.ScaleType.Crop;
         ZIndex = 1;
         Parent = Inner;
