@@ -3769,13 +3769,12 @@ function Library:SetBackground(decalId)
     Library._BackgroundImage.Image = imageToSet;
     task.defer(function()
         if not Library._BackgroundImage or not Library._BackgroundImage.Parent then return end;
-        local contentState = Library._BackgroundImage.ImageContent;
-        local deadline = tick() + 5;
+        local deadline = tick() + 10;
         while tick() < deadline do
             if Library._BackgroundImage.IsLoaded then break end;
             task.wait(0.1);
         end;
-        if not Library._BackgroundImage.IsLoaded or Library._BackgroundImage.ImageRectSize == Vector2.new(0,0) and Library._BackgroundImage.Image ~= '' then
+        if not Library._BackgroundImage.IsLoaded then
             Library._BackgroundImage.Visible = false;
             Library._BackgroundImage.Image = '';
             if Library._BackgroundStroke then
