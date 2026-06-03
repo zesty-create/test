@@ -3694,6 +3694,19 @@ function Library:SetBackground(decalId)
         if MSO then MSO.BackgroundTransparency = 0; MSO.BorderSizePixel = 1; end;
         if MSI then MSI.BackgroundTransparency = 0; MSI.BorderSizePixel = 1; end;
         if TC then TC.BackgroundTransparency = 0; TC.BorderSizePixel = 1; end;
+
+        -- Restore all groupbox/tabbox backgrounds
+        local _skip2 = {[Inner]=true,[MSO]=true,[MSI]=true,[TC]=true};
+        for _, data in ipairs(Library.Registry) do
+            local inst = data.Instance;
+            local props = data.Properties;
+            if not _skip2[inst] and props.BackgroundColor3 == 'BackgroundColor' then
+                pcall(function()
+                    inst.BackgroundTransparency = 0;
+                    inst.BorderSizePixel = 1;
+                end);
+            end;
+        end;
         return;
     end;
 
@@ -3708,6 +3721,19 @@ function Library:SetBackground(decalId)
     if MSO then MSO.BackgroundTransparency = 1; MSO.BorderSizePixel = 0; end;
     if MSI then MSI.BackgroundTransparency = 1; MSI.BorderSizePixel = 0; end;
     if TC then TC.BackgroundTransparency = 1; TC.BorderSizePixel = 0; end;
+
+    -- Make all groupbox/tabbox backgrounds transparent
+    local _skip = {[Inner]=true,[MSO]=true,[MSI]=true,[TC]=true};
+    for _, data in ipairs(Library.Registry) do
+        local inst = data.Instance;
+        local props = data.Properties;
+        if not _skip[inst] and props.BackgroundColor3 == 'BackgroundColor' then
+            pcall(function()
+                inst.BackgroundTransparency = 1;
+                inst.BorderSizePixel = 0;
+            end);
+        end;
+    end;
 
     if not Library._BackgroundStroke then
         Library._BackgroundStroke = Library:Create('UIStroke', {
