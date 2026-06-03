@@ -3063,6 +3063,7 @@ function Library:CreateWindow(...)
     local Outer = Library:Create('Frame', {
         AnchorPoint = Config.AnchorPoint,
         BackgroundColor3 = Color3.new(0, 0, 0);
+        BackgroundTransparency = 1;
         BorderSizePixel = 0;
         Position = Config.Position,
         Size = Config.Size,
@@ -3075,17 +3076,71 @@ function Library:CreateWindow(...)
 
     local Inner = Library:Create('Frame', {
         BackgroundColor3 = Library.MainColor;
-        BorderColor3 = Library.AccentColor;
-        BorderMode = Enum.BorderMode.Inset;
+        BackgroundTransparency = 1;
+        BorderSizePixel = 0;
         Position = UDim2.new(0, 1, 0, 1);
         Size = UDim2.new(1, -2, 1, -2);
         ZIndex = 1;
         Parent = Outer;
     });
 
+    local InnerStroke = Library:Create('UIStroke', {
+        Color = Library.AccentColor;
+        Thickness = 1;
+        ApplyStrokeMode = Enum.ApplyStrokeMode.Border;
+        Parent = Inner;
+    });
+
+    Library:AddToRegistry(InnerStroke, {
+        Color = 'AccentColor';
+    });
+
+    local BackgroundImage = Library:Create('ImageLabel', {
+        BackgroundTransparency = 1;
+        BorderSizePixel = 0;
+        Size = UDim2.new(1, 0, 1, 0);
+        Position = UDim2.new(0, 0, 0, 0);
+        Image = '';
+        ScaleType = Enum.ScaleType.Crop;
+        ZIndex = 1;
+        Parent = Inner;
+    });
+
+    -- Универсальный загрузчик: поддерживает Image, Decal, Texture, MeshPart и любые 2D ассеты
+    local function ResolveAssetImage(assetId)
+        -- принимаем как число так и строку "rbxassetid://..."
+        local id = tostring(assetId):match('%d+') or '';
+        if id == '' then return '' end;
+
+        -- сначала пробуем напрямую — работает для Image/Texture
+        local direct = 'rbxassetid://' .. id;
+        BackgroundImage.Image = direct;
+
+        -- если через секунду картинка не загрузилась (ContentProvider) — пробуем через InsertService
+        task.delay(1, function()
+            if BackgroundImage.IsLoaded then return end;
+            local ok, result = pcall(function()
+                local model = game:GetService('InsertService'):LoadAsset(tonumber(id));
+                -- ищем любой объект с текстурой внутри
+                for _, obj in ipairs(model:GetDescendants()) do
+                    if obj:IsA('Decal') or obj:IsA('Texture') then
+                        return obj.Texture;
+                    elseif obj:IsA('ImageLabel') or obj:IsA('ImageButton') then
+                        return obj.Image;
+                    end;
+                end;
+                model:Destroy();
+            end);
+            if ok and result and result ~= '' then
+                BackgroundImage.Image = result;
+            end;
+        end);
+    end;
+
+    ResolveAssetImage('78711824094335');
+
     Library:AddToRegistry(Inner, {
         BackgroundColor3 = 'MainColor';
-        BorderColor3 = 'AccentColor';
     });
 
     local WindowLabel = Library:CreateLabel({
@@ -3099,6 +3154,7 @@ function Library:CreateWindow(...)
 
     local MainSectionOuter = Library:Create('Frame', {
         BackgroundColor3 = Library.BackgroundColor;
+        BackgroundTransparency = 1;
         BorderColor3 = Library.OutlineColor;
         Position = UDim2.new(0, 8, 0, 25);
         Size = UDim2.new(1, -16, 1, -33);
@@ -3113,6 +3169,7 @@ function Library:CreateWindow(...)
 
     local MainSectionInner = Library:Create('Frame', {
         BackgroundColor3 = Library.BackgroundColor;
+        BackgroundTransparency = 1;
         BorderColor3 = Color3.new(0, 0, 0);
         BorderMode = Enum.BorderMode.Inset;
         Position = UDim2.new(0, 0, 0, 0);
@@ -3142,6 +3199,7 @@ function Library:CreateWindow(...)
 
     local TabContainer = Library:Create('Frame', {
         BackgroundColor3 = Library.MainColor;
+        BackgroundTransparency = 1;
         BorderColor3 = Library.OutlineColor;
         Position = UDim2.new(0, 8, 0, 30);
         Size = UDim2.new(1, -16, 1, -38);
@@ -3169,6 +3227,7 @@ function Library:CreateWindow(...)
 
         local TabButton = Library:Create('Frame', {
             BackgroundColor3 = Library.BackgroundColor;
+            BackgroundTransparency = 0.5;
             BorderColor3 = Library.OutlineColor;
             Size = UDim2.new(0, TabButtonWidth + 8 + 4, 1, 0);
             ZIndex = 1;
@@ -3289,6 +3348,7 @@ function Library:CreateWindow(...)
 
             local BoxOuter = Library:Create('Frame', {
                 BackgroundColor3 = Library.BackgroundColor;
+                BackgroundTransparency = 0.5;
                 BorderColor3 = Library.OutlineColor;
                 BorderMode = Enum.BorderMode.Inset;
                 Size = UDim2.new(1, 0, 0, 507 + 2);
@@ -3303,6 +3363,7 @@ function Library:CreateWindow(...)
 
             local BoxInner = Library:Create('Frame', {
                 BackgroundColor3 = Library.BackgroundColor;
+                BackgroundTransparency = 0.5;
                 BorderColor3 = Color3.new(0, 0, 0);
                 Size = UDim2.new(1, -2, 1, -2);
                 Position = UDim2.new(0, 1, 0, 1);
@@ -3384,6 +3445,7 @@ function Library:CreateWindow(...)
 
             local BoxOuter = Library:Create('Frame', {
                 BackgroundColor3 = Library.BackgroundColor;
+                BackgroundTransparency = 0.5;
                 BorderColor3 = Library.OutlineColor;
                 BorderMode = Enum.BorderMode.Inset;
                 Size = UDim2.new(1, 0, 0, 0);
@@ -3398,6 +3460,7 @@ function Library:CreateWindow(...)
 
             local BoxInner = Library:Create('Frame', {
                 BackgroundColor3 = Library.BackgroundColor;
+                BackgroundTransparency = 0.5;
                 BorderColor3 = Color3.new(0, 0, 0);
                 Size = UDim2.new(1, -2, 1, -2);
                 Position = UDim2.new(0, 1, 0, 1);
@@ -3441,6 +3504,7 @@ function Library:CreateWindow(...)
 
                 local Button = Library:Create('Frame', {
                     BackgroundColor3 = Library.MainColor;
+                    BackgroundTransparency = 0.5;
                     BorderColor3 = Color3.new(0, 0, 0);
                     Size = UDim2.new(0.5, 0, 1, 0);
                     ZIndex = 6;
@@ -3625,6 +3689,9 @@ function Library:CreateWindow(...)
     if Config.AutoShow then task.spawn(function() Library:Toggle() end) end
 
     Window.Holder = Outer;
+    function Window:SetBackground('79650496564551')
+        ResolveAssetImage(assetId);
+    end;
 
     return Window;
 end;
