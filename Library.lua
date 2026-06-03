@@ -3063,6 +3063,7 @@ function Library:CreateWindow(...)
     local Outer = Library:Create('Frame', {
         AnchorPoint = Config.AnchorPoint,
         BackgroundColor3 = Color3.new(0, 0, 0);
+        BackgroundTransparency = 1;
         BorderSizePixel = 0;
         Position = Config.Position,
         Size = Config.Size,
@@ -3184,6 +3185,7 @@ function Library:CreateWindow(...)
 
         local TabButton = Library:Create('Frame', {
             BackgroundColor3 = Library.BackgroundColor;
+            BackgroundTransparency = 0.5;
             BorderColor3 = Library.OutlineColor;
             Size = UDim2.new(0, TabButtonWidth + 8 + 4, 1, 0);
             ZIndex = 1;
@@ -3304,6 +3306,7 @@ function Library:CreateWindow(...)
 
             local BoxOuter = Library:Create('Frame', {
                 BackgroundColor3 = Library.BackgroundColor;
+                BackgroundTransparency = 0.5;
                 BorderColor3 = Library.OutlineColor;
                 BorderMode = Enum.BorderMode.Inset;
                 Size = UDim2.new(1, 0, 0, 507 + 2);
@@ -3318,6 +3321,7 @@ function Library:CreateWindow(...)
 
             local BoxInner = Library:Create('Frame', {
                 BackgroundColor3 = Library.BackgroundColor;
+                BackgroundTransparency = 0.5;
                 BorderColor3 = Color3.new(0, 0, 0);
                 Size = UDim2.new(1, -2, 1, -2);
                 Position = UDim2.new(0, 1, 0, 1);
@@ -3399,6 +3403,7 @@ function Library:CreateWindow(...)
 
             local BoxOuter = Library:Create('Frame', {
                 BackgroundColor3 = Library.BackgroundColor;
+                BackgroundTransparency = 0.5;
                 BorderColor3 = Library.OutlineColor;
                 BorderMode = Enum.BorderMode.Inset;
                 Size = UDim2.new(1, 0, 0, 0);
@@ -3413,6 +3418,7 @@ function Library:CreateWindow(...)
 
             local BoxInner = Library:Create('Frame', {
                 BackgroundColor3 = Library.BackgroundColor;
+                BackgroundTransparency = 0.5;
                 BorderColor3 = Color3.new(0, 0, 0);
                 Size = UDim2.new(1, -2, 1, -2);
                 Position = UDim2.new(0, 1, 0, 1);
@@ -3456,6 +3462,7 @@ function Library:CreateWindow(...)
 
                 local Button = Library:Create('Frame', {
                     BackgroundColor3 = Library.MainColor;
+                    BackgroundTransparency = 0.5;
                     BorderColor3 = Color3.new(0, 0, 0);
                     Size = UDim2.new(0.5, 0, 1, 0);
                     ZIndex = 6;
