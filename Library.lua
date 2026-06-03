@@ -3100,7 +3100,7 @@ function Library:CreateWindow(...)
         BorderSizePixel = 0;
         Size = UDim2.new(1, 0, 1, 0);
         Position = UDim2.new(0, 0, 0, 0);
-        Image = 'rbxassetid://79650496564551';
+        Image = 'rbxassetid://127269729813145';
         ScaleType = Enum.ScaleType.Crop;
         ZIndex = 1;
         Parent = Inner;
