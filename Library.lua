@@ -3114,9 +3114,6 @@ function Library:CreateWindow(...)
         BorderColor3 = 'OutlineColor';
     });
 
-    Library._BackgroundImageParent = Inner;
-    Library._BackgroundImageSection = MainSectionOuter;
-
     local MainSectionInner = Library:Create('Frame', {
         BackgroundColor3 = Library.BackgroundColor;
         BorderColor3 = Color3.new(0, 0, 0);
@@ -3657,7 +3654,6 @@ function Library:SetBackground(decalId)
     if not Inner then return end;
 
     if not decalId or decalId == '' then
-        -- Default: exactly like library.txt - no ImageLabel, normal Inner
         if Library._BackgroundImage then
             Library._BackgroundImage:Destroy();
             Library._BackgroundImage = nil;
@@ -3676,8 +3672,7 @@ function Library:SetBackground(decalId)
         });
         return;
     end;
-
-    -- Custom: transparent Outer/Inner, UIStroke, ImageLabel
+    
     Outer.BackgroundTransparency = 1;
     Inner.BackgroundTransparency = 1;
     Inner.BorderSizePixel = 0;
@@ -3700,20 +3695,13 @@ function Library:SetBackground(decalId)
         Library._BackgroundImage = Library:Create('ImageLabel', {
             BackgroundTransparency = 1;
             BorderSizePixel = 0;
-            Size = UDim2.new(1, 0, 1, 0);
-            Position = UDim2.new(0, 0, 0, 0);
+            Size = UDim2.new(1, -2, 1, -2);
+            Position = UDim2.new(0, 1, 0, 1);
             Image = '';
             ScaleType = Enum.ScaleType.Crop;
             ZIndex = 1;
-            Parent = Library._BackgroundImageSection;
+            Parent = Outer;
         });
-        -- Move to first child so it renders behind everything inside MainSectionOuter
-        for _, child in ipairs(Library._BackgroundImageSection:GetChildren()) do
-            if child ~= Library._BackgroundImage then
-                child.Parent = nil;
-                child.Parent = Library._BackgroundImageSection;
-            end
-        end
     end;
 
     local cleanId = tostring(decalId):match('%d+') or decalId;
