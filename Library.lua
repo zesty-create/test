@@ -3073,7 +3073,6 @@ function Library:CreateWindow(...)
 
     Library:MakeDraggable(Outer, 25);
 
-    -- Background image: created BEFORE Inner so it renders behind all UI (same ZIndex, earlier creation = behind)
     Library._BackgroundImage = Library:Create('ImageLabel', {
         BackgroundTransparency = 1;
         BorderSizePixel = 0;
@@ -3678,7 +3677,6 @@ function Library:SetBackground(decalId)
     if not Inner then return end;
 
     if not decalId or decalId == '' then
-        -- Default: restore normal look
         if Library._BackgroundImage then
             Library._BackgroundImage.Visible = false;
             Library._BackgroundImage.Image = '';
@@ -3715,7 +3713,6 @@ function Library:SetBackground(decalId)
         return;
     end;
 
-    -- Custom: transparent backgrounds, image shows through
     Outer.BackgroundTransparency = 1;
     Inner.BackgroundTransparency = 1;
     Inner.BorderSizePixel = 0;
@@ -3769,19 +3766,16 @@ function Library:SetBackground(decalId)
         imageToSet = 'rbxassetid://' .. cleanId;
     end
 
-    -- Проверяем что картинка реально загрузилась
     Library._BackgroundImage.Image = imageToSet;
     task.defer(function()
         if not Library._BackgroundImage or not Library._BackgroundImage.Parent then return end;
         local contentState = Library._BackgroundImage.ImageContent;
-        -- Ждём загрузки
         local deadline = tick() + 5;
         while tick() < deadline do
             if Library._BackgroundImage.IsLoaded then break end;
             task.wait(0.1);
         end;
         if not Library._BackgroundImage.IsLoaded or Library._BackgroundImage.ImageRectSize == Vector2.new(0,0) and Library._BackgroundImage.Image ~= '' then
-            -- Не загрузилось - откатываем
             Library._BackgroundImage.Visible = false;
             Library._BackgroundImage.Image = '';
             if Library._BackgroundStroke then
