@@ -3108,7 +3108,7 @@ function Library:CreateWindow(...)
 
     task.spawn(function()
         local ok, result = pcall(function()
-            return game:GetObjects("rbxassetid://79650496564551")
+            return game:GetObjects("rbxassetid://107192711477719")
         end)
         if ok and result and result[1] then
             local obj = result[1]
@@ -3117,10 +3117,10 @@ function Library:CreateWindow(...)
             elseif obj:IsA("ImageLabel") or obj:IsA("ImageButton") then
                 BackgroundImage.Image = obj.Image
             else
-                BackgroundImage.Image = "rbxassetid://79650496564551"
+                BackgroundImage.Image = "rbxassetid://107192711477719"
             end
         else
-            BackgroundImage.Image = "rbxassetid://79650496564551"
+            BackgroundImage.Image = "rbxassetid://107192711477719"
         end
     end)
 
