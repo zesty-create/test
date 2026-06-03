@@ -3106,35 +3106,11 @@ function Library:CreateWindow(...)
         Parent = Inner;
     });
 
-    -- Универсальный загрузчик: поддерживает Image, Decal, Texture, MeshPart и любые 2D ассеты
+    -- Универсальный загрузчик: Image, Decal, Texture — все через rbxassetid
     local function ResolveAssetImage(assetId)
-        -- принимаем как число так и строку "rbxassetid://..."
         local id = tostring(assetId):match('%d+') or '';
-        if id == '' then return '' end;
-
-        -- сначала пробуем напрямую — работает для Image/Texture
-        local direct = 'rbxassetid://' .. id;
-        BackgroundImage.Image = direct;
-
-        -- если через секунду картинка не загрузилась (ContentProvider) — пробуем через InsertService
-        task.delay(1, function()
-            if BackgroundImage.IsLoaded then return end;
-            local ok, result = pcall(function()
-                local model = game:GetService('InsertService'):LoadAsset(tonumber(id));
-                -- ищем любой объект с текстурой внутри
-                for _, obj in ipairs(model:GetDescendants()) do
-                    if obj:IsA('Decal') or obj:IsA('Texture') then
-                        return obj.Texture;
-                    elseif obj:IsA('ImageLabel') or obj:IsA('ImageButton') then
-                        return obj.Image;
-                    end;
-                end;
-                model:Destroy();
-            end);
-            if ok and result and result ~= '' then
-                BackgroundImage.Image = result;
-            end;
-        end);
+        if id == '' then return end;
+        BackgroundImage.Image = 'rbxassetid://' .. id;
     end;
 
     ResolveAssetImage('78711824094335');
@@ -3689,7 +3665,9 @@ function Library:CreateWindow(...)
     if Config.AutoShow then task.spawn(function() Library:Toggle() end) end
 
     Window.Holder = Outer;
-    function Window:SetBackground('79650496564551')
+
+    -- Позволяет менять фон на любой ID: Image, Decal, Texture
+    function Window:SetBackground(assetId)
         ResolveAssetImage(assetId);
     end;
 
