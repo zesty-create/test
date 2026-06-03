@@ -3114,9 +3114,6 @@ function Library:CreateWindow(...)
         BorderColor3 = 'OutlineColor';
     });
 
-    Library._BackgroundImageParent = Inner;
-    Library._BackgroundImageSection = MainSectionOuter;
-
     local MainSectionInner = Library:Create('Frame', {
         BackgroundColor3 = Library.BackgroundColor;
         BorderColor3 = Color3.new(0, 0, 0);
@@ -3705,15 +3702,8 @@ function Library:SetBackground(decalId)
             Image = '';
             ScaleType = Enum.ScaleType.Crop;
             ZIndex = 1;
-            Parent = Library._BackgroundImageSection;
+            Parent = Inner;
         });
-        -- Move to first child so it renders behind everything inside MainSectionOuter
-        for _, child in ipairs(Library._BackgroundImageSection:GetChildren()) do
-            if child ~= Library._BackgroundImage then
-                child.Parent = nil;
-                child.Parent = Library._BackgroundImageSection;
-            end
-        end
     end;
 
     local cleanId = tostring(decalId):match('%d+') or decalId;
