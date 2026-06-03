@@ -3077,12 +3077,22 @@ function Library:CreateWindow(...)
     local Inner = Library:Create('Frame', {
         BackgroundColor3 = Library.MainColor;
         BackgroundTransparency = 1;
-        BorderColor3 = Library.AccentColor;
-        BorderMode = Enum.BorderMode.Inset;
+        BorderSizePixel = 0;
         Position = UDim2.new(0, 1, 0, 1);
         Size = UDim2.new(1, -2, 1, -2);
         ZIndex = 1;
         Parent = Outer;
+    });
+
+    local InnerStroke = Library:Create('UIStroke', {
+        Color = Library.AccentColor;
+        Thickness = 1;
+        ApplyStrokeMode = Enum.ApplyStrokeMode.Border;
+        Parent = Inner;
+    });
+
+    Library:AddToRegistry(InnerStroke, {
+        Color = 'AccentColor';
     });
 
     local BackgroundImage = Library:Create('ImageLabel', {
@@ -3098,7 +3108,6 @@ function Library:CreateWindow(...)
 
     Library:AddToRegistry(Inner, {
         BackgroundColor3 = 'MainColor';
-        BorderColor3 = 'AccentColor';
     });
 
     local WindowLabel = Library:CreateLabel({
