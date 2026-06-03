@@ -3073,13 +3073,26 @@ function Library:CreateWindow(...)
 
     Library:MakeDraggable(Outer, 25);
 
+    -- Background image: created BEFORE Inner so it renders behind all UI (same ZIndex, earlier creation = behind)
+    Library._BackgroundImage = Library:Create('ImageLabel', {
+        BackgroundTransparency = 1;
+        BorderSizePixel = 0;
+        Size = UDim2.new(1, 0, 1, 0);
+        Position = UDim2.new(0, 0, 0, 0);
+        Image = '';
+        ScaleType = Enum.ScaleType.Crop;
+        ZIndex = 1;
+        Visible = false;
+        Parent = Outer;
+    });
+
     local Inner = Library:Create('Frame', {
         BackgroundColor3 = Library.MainColor;
         BorderColor3 = Library.AccentColor;
         BorderMode = Enum.BorderMode.Inset;
         Position = UDim2.new(0, 1, 0, 1);
         Size = UDim2.new(1, -2, 1, -2);
-        ZIndex = 2;
+        ZIndex = 1;
         Parent = Outer;
     });
 
@@ -3654,10 +3667,10 @@ function Library:SetBackground(decalId)
     if not Inner then return end;
 
     if not decalId or decalId == '' then
-        -- Default: exactly like library.txt - no ImageLabel, normal Inner
+        -- Default: hide image, restore normal look
         if Library._BackgroundImage then
-            Library._BackgroundImage:Destroy();
-            Library._BackgroundImage = nil;
+            Library._BackgroundImage.Visible = false;
+            Library._BackgroundImage.Image = '';
         end
         if Library._BackgroundStroke then
             Library._BackgroundStroke:Destroy();
@@ -3674,7 +3687,7 @@ function Library:SetBackground(decalId)
         return;
     end;
 
-    -- Custom: transparent Outer/Inner, UIStroke on Outer, ImageLabel behind Inner
+    -- Custom: show background image (already behind Inner due to creation order)
     Outer.BackgroundTransparency = 1;
     Inner.BackgroundTransparency = 1;
     Inner.BorderSizePixel = 0;
@@ -3693,18 +3706,7 @@ function Library:SetBackground(decalId)
         Library:AddToRegistry(Library._BackgroundStroke, { Color = 'AccentColor' });
     end;
 
-    if not Library._BackgroundImage then
-        Library._BackgroundImage = Library:Create('ImageLabel', {
-            BackgroundTransparency = 1;
-            BorderSizePixel = 0;
-            Size = UDim2.new(1, 0, 1, 0);
-            Position = UDim2.new(0, 0, 0, 0);
-            Image = '';
-            ScaleType = Enum.ScaleType.Crop;
-            ZIndex = 1;
-            Parent = Outer;
-        });
-    end;
+    Library._BackgroundImage.Visible = true;
 
     local cleanId = tostring(decalId):match('%d+') or decalId;
     local ok, result = pcall(function()
