@@ -3749,30 +3749,14 @@ function Library:SetBackground(decalId)
     end;
 
     local cleanId = tostring(decalId):gsub('%s+', '');
-    local imageToSet = nil;
-    local ok, result = pcall(function()
-        return game:GetObjects('rbxassetid://' .. cleanId)
-    end)
-    if ok and result and result[1] and typeof(result[1]) ~= 'string' then
-        local obj = result[1]
-        if obj:IsA('Decal') then
-            imageToSet = obj.Texture;
-        elseif obj:IsA('ImageLabel') or obj:IsA('ImageButton') then
-            imageToSet = obj.Image;
-        else
-            imageToSet = 'rbxassetid://' .. cleanId;
-        end
-    else
-        imageToSet = 'rbxassetid://' .. cleanId;
-    end
-
-    Library._BackgroundImage.Image = imageToSet;
+    Library._BackgroundImage.Image = 'rbxassetid://' .. cleanId;
+    Library._BackgroundImage.Visible = true;
     task.defer(function()
         if not Library._BackgroundImage or not Library._BackgroundImage.Parent then return end;
-        local deadline = tick() + 10;
+        local deadline = tick() + 15;
         while tick() < deadline do
             if Library._BackgroundImage.IsLoaded then break end;
-            task.wait(0.1);
+            task.wait(0.2);
         end;
         if not Library._BackgroundImage.IsLoaded then
             Library._BackgroundImage.Visible = false;
