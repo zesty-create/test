@@ -3108,23 +3108,7 @@ function Library:CreateWindow(...)
 
     Library._BackgroundImage = BackgroundImage;
 
-    do
-        local ok, result = pcall(function()
-            return game:GetObjects("rbxassetid://95123683319272")
-        end)
-        if ok and result and result[1] then
-            local obj = result[1]
-            if obj:IsA("Decal") then
-                BackgroundImage.Image = obj.Texture
-            elseif obj:IsA("ImageLabel") or obj:IsA("ImageButton") then
-                BackgroundImage.Image = obj.Image
-            else
-                BackgroundImage.Image = "rbxassetid://95123683319272"
-            end
-        else
-            BackgroundImage.Image = "rbxassetid://95123683319272"
-        end
-    end
+
 
     Library:AddToRegistry(Inner, {
         BackgroundColor3 = 'MainColor';
