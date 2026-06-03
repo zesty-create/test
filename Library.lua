@@ -3729,7 +3729,7 @@ function Library:SetBackground(decalId)
         local props = data.Properties;
         if not _skip[inst] and props.BackgroundColor3 == 'BackgroundColor' then
             pcall(function()
-                inst.BackgroundTransparency = 1;
+                inst.BackgroundTransparency = 0.5;
                 inst.BorderSizePixel = 0;
             end);
         end;
