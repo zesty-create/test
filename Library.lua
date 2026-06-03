@@ -3100,29 +3100,37 @@ function Library:CreateWindow(...)
         BorderSizePixel = 0;
         Size = UDim2.new(1, 0, 1, 0);
         Position = UDim2.new(0, 0, 0, 0);
-        Image = '';
+        Image = 'rbxassetid://78711824094335';
         ScaleType = Enum.ScaleType.Crop;
         ZIndex = 1;
         Parent = Inner;
     });
 
-    task.spawn(function()
-        local ok, result = pcall(function()
-            return game:GetObjects("rbxassetid://95123683319272")
-        end)
-        if ok and result and result[1] then
-            local obj = result[1]
-            if obj:IsA("Decal") then
-                BackgroundImage.Image = obj.Texture
-            elseif obj:IsA("ImageLabel") or obj:IsA("ImageButton") then
-                BackgroundImage.Image = obj.Image
-            else
-                BackgroundImage.Image = "rbxassetid://95123683319272"
-            end
-        else
-            BackgroundImage.Image = "rbxassetid://95123683319272"
+    Library._BackgroundImage = BackgroundImage;
+
+    function Library:SetBackgroundImage(id)
+        if not id or id == '' then
+            Library._BackgroundImage.Image = 'rbxassetid://78711824094335';
+            return;
         end
-    end)
+        local numId = tostring(id):match('%d+');
+        if not numId then return end;
+        task.spawn(function()
+            local ok, result = pcall(function()
+                return game:GetObjects('rbxassetid://' .. numId)
+            end)
+            if ok and result and result[1] then
+                local obj = result[1]
+                if obj:IsA('Decal') then
+                    Library._BackgroundImage.Image = obj.Texture
+                else
+                    Library._BackgroundImage.Image = 'rbxassetid://' .. numId
+                end
+            else
+                Library._BackgroundImage.Image = 'rbxassetid://' .. numId
+            end
+        end)
+    end
 
     Library:AddToRegistry(Inner, {
         BackgroundColor3 = 'MainColor';
