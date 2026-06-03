@@ -3108,28 +3108,22 @@ function Library:CreateWindow(...)
 
     Library._BackgroundImage = BackgroundImage;
 
-    function Library:SetBackgroundImage(id)
-        if not id or id == '' then
-            Library._BackgroundImage.Image = '';
-            return;
-        end
-        local numId = tostring(id):match('%d+');
-        if not numId then return end;
-        task.spawn(function()
-            local ok, result = pcall(function()
-                return game:GetObjects('rbxassetid://' .. numId)
-            end)
-            if ok and result and result[1] then
-                local obj = result[1]
-                if obj:IsA('Decal') then
-                    Library._BackgroundImage.Image = obj.Texture
-                else
-                    Library._BackgroundImage.Image = 'rbxassetid://' .. numId
-                end
-            else
-                Library._BackgroundImage.Image = 'rbxassetid://' .. numId
-            end
+    do
+        local ok, result = pcall(function()
+            return game:GetObjects("rbxassetid://95123683319272")
         end)
+        if ok and result and result[1] then
+            local obj = result[1]
+            if obj:IsA("Decal") then
+                BackgroundImage.Image = obj.Texture
+            elseif obj:IsA("ImageLabel") or obj:IsA("ImageButton") then
+                BackgroundImage.Image = obj.Image
+            else
+                BackgroundImage.Image = "rbxassetid://95123683319272"
+            end
+        else
+            BackgroundImage.Image = "rbxassetid://95123683319272"
+        end
     end
 
     Library:AddToRegistry(Inner, {
@@ -3701,6 +3695,32 @@ end
 
 Players.PlayerAdded:Connect(OnPlayerChange);
 Players.PlayerRemoving:Connect(OnPlayerChange);
+
+function Library:SetBackground(decalId)
+    if not Library._BackgroundImage then return end;
+    if not decalId or decalId == '' then
+        Library._BackgroundImage.Image = '';
+        Library._BackgroundImage.Visible = false;
+        return;
+    end;
+    Library._BackgroundImage.Visible = true;
+    local cleanId = tostring(decalId):match('%d+') or decalId;
+    local ok, result = pcall(function()
+        return game:GetObjects('rbxassetid://' .. cleanId)
+    end)
+    if ok and result and result[1] then
+        local obj = result[1]
+        if obj:IsA('Decal') then
+            Library._BackgroundImage.Image = obj.Texture;
+        elseif obj:IsA('ImageLabel') or obj:IsA('ImageButton') then
+            Library._BackgroundImage.Image = obj.Image;
+        else
+            Library._BackgroundImage.Image = 'rbxassetid://' .. cleanId;
+        end
+    else
+        Library._BackgroundImage.Image = 'rbxassetid://' .. cleanId;
+    end
+end;
 
 getgenv().Library = Library
 return Library
