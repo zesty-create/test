@@ -3751,24 +3751,72 @@ function Library:SetBackground(decalId)
         Library:AddToRegistry(Library._BackgroundStroke, { Color = 'AccentColor' });
     end;
 
-    Library._BackgroundImage.Visible = true;
-
     local cleanId = tostring(decalId):gsub('%s+', '');
+    local imageToSet = nil;
     local ok, result = pcall(function()
         return game:GetObjects('rbxassetid://' .. cleanId)
     end)
     if ok and result and result[1] and typeof(result[1]) ~= 'string' then
         local obj = result[1]
         if obj:IsA('Decal') then
-            Library._BackgroundImage.Image = obj.Texture;
+            imageToSet = obj.Texture;
         elseif obj:IsA('ImageLabel') or obj:IsA('ImageButton') then
-            Library._BackgroundImage.Image = obj.Image;
+            imageToSet = obj.Image;
         else
-            Library._BackgroundImage.Image = 'rbxassetid://' .. cleanId;
+            imageToSet = 'rbxassetid://' .. cleanId;
         end
     else
-        Library._BackgroundImage.Image = 'rbxassetid://' .. cleanId;
+        imageToSet = 'rbxassetid://' .. cleanId;
     end
+
+    -- Проверяем что картинка реально загрузилась
+    Library._BackgroundImage.Image = imageToSet;
+    task.defer(function()
+        if not Library._BackgroundImage or not Library._BackgroundImage.Parent then return end;
+        local contentState = Library._BackgroundImage.ImageContent;
+        -- Ждём загрузки
+        local deadline = tick() + 5;
+        while tick() < deadline do
+            if Library._BackgroundImage.IsLoaded then break end;
+            task.wait(0.1);
+        end;
+        if not Library._BackgroundImage.IsLoaded or Library._BackgroundImage.ImageRectSize == Vector2.new(0,0) and Library._BackgroundImage.Image ~= '' then
+            -- Не загрузилось - откатываем
+            Library._BackgroundImage.Visible = false;
+            Library._BackgroundImage.Image = '';
+            if Library._BackgroundStroke then
+                Library._BackgroundStroke:Destroy();
+                Library._BackgroundStroke = nil;
+            end;
+            Outer.BackgroundTransparency = 0;
+            Inner.BackgroundTransparency = 0;
+            Inner.BorderSizePixel = 1;
+            Library:RemoveFromRegistry(Inner);
+            Library:AddToRegistry(Inner, {
+                BackgroundColor3 = 'MainColor';
+                BorderColor3 = 'AccentColor';
+            });
+            if MSO then MSO.BackgroundTransparency = 0; MSO.BorderSizePixel = 1; end;
+            if MSI then MSI.BackgroundTransparency = 0; MSI.BorderSizePixel = 1; end;
+            if TC then TC.BackgroundTransparency = 0; TC.BorderSizePixel = 1; end;
+            for i = 1, #Library.Registry do
+                local data = Library.Registry[i];
+                if data then
+                    local inst = data.Instance;
+                    local props = data.Properties;
+                    local skip = {[Inner]=true,[MSO]=true,[MSI]=true,[TC]=true};
+                    if not skip[inst] and props.BackgroundColor3 == 'BackgroundColor' then
+                        pcall(function()
+                            inst.BackgroundTransparency = 0;
+                            inst.BorderSizePixel = 1;
+                        end);
+                    end;
+                end;
+            end;
+        else
+            Library._BackgroundImage.Visible = true;
+        end;
+    end);
 end;
 
 getgenv().Library = Library
