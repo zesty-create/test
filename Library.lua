@@ -3034,6 +3034,15 @@ function Library:Notify(Text, Time)
     end);
 end;
 
+local success, Library = pcall(function()
+    return loadstring(game:HttpGet("URL"))()
+end)
+
+if not success or not Library then
+    warn("contact EXTND owner (named EXTND_K3")
+    return
+end
+
 function Library:CreateWindow(...)
     local Arguments = { ... }
     local Config = { AnchorPoint = Vector2.zero }
