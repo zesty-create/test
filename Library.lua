@@ -59,8 +59,30 @@ table.insert(Library.Signals, RunService.Heartbeat:Connect(function(Delta)
     Library.CurrentRainbowColor = Color3.fromHSV(Hue, 0.8, 1);
 end))
 
+-- Раньше KeyPicker:Update() (дорогая операция: обход всех лейблов KeybindContainer
+-- + чтение AbsoluteSize/TextBounds у каждого + пересчёт размера фрейма) вызывалась
+-- для КАЖДОГО зарегистрированного кейбинда на КАЖДОЕ нажатие/отпускание любой клавиши
+-- или кнопки мыши в игре — независимо от того, что это была за клавиша.
+-- При 5-10 кейбиндах и активном геймплее (WASD, стрельба и т.п.) это давало
+-- постоянный поток O(N) layout-пересчётов и было основным источником лагов.
+--
+-- Реально требуют перерисовки на КАЖДЫЙ инпут только кейбинды в режиме 'Hold' —
+-- их подсвеченное состояние зависит от текущего IsKeyDown/IsMouseButtonPressed,
+-- которое могло измениться из-за любой другой клавиши (в частности - её отпускания).
+-- 'Toggle' и 'Always' обновляются точечно, только когда сработала именно их клавиша.
+local MouseButton1  = Enum.UserInputType.MouseButton1
+local MouseButton2  = Enum.UserInputType.MouseButton2
+local KeyboardInput = Enum.UserInputType.Keyboard
+
+local function _isRelevantInput(InputType)
+    return InputType == KeyboardInput or InputType == MouseButton1 or InputType == MouseButton2
+end
+
 table.insert(Library.Signals, InputService.InputBegan:Connect(function(Input, Processed)
+    local InputType = Input.UserInputType
     local kp = Library._KeyPickers
+    local Relevant = _isRelevantInput(InputType)
+
     for i = 1, #kp do
         local entry = kp[i]
         local KeyPicker       = entry.KeyPicker
@@ -71,22 +93,27 @@ table.insert(Library.Signals, InputService.InputBegan:Connect(function(Input, Pr
             if KeyPicker.Mode == 'Toggle' and not Processed then
                 local Key = KeyPicker.Value
                 if Key == 'MB1' or Key == 'MB2' then
-                    if (Key == 'MB1' and Input.UserInputType == Enum.UserInputType.MouseButton1)
-                    or (Key == 'MB2' and Input.UserInputType == Enum.UserInputType.MouseButton2) then
+                    if (Key == 'MB1' and InputType == MouseButton1)
+                    or (Key == 'MB2' and InputType == MouseButton2) then
                         KeyPicker.Toggled = not KeyPicker.Toggled
                         KeyPicker:DoClick()
+                        KeyPicker:Update()
                     end
-                elseif Input.UserInputType == Enum.UserInputType.Keyboard then
+                elseif InputType == KeyboardInput then
                     if Input.KeyCode.Name == Key then
                         KeyPicker.Toggled = not KeyPicker.Toggled
                         KeyPicker:DoClick()
+                        KeyPicker:Update()
                     end
                 end
+            elseif KeyPicker.Mode == 'Hold' and Relevant then
+                -- Только Hold перерисовываем на любой релевантный инпут:
+                -- его подсветка зависит от текущего состояния клавиши/кнопки.
+                KeyPicker:Update()
             end
-            KeyPicker:Update()
         end
 
-        if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if InputType == MouseButton1 then
             local AbsPos  = ModeSelectOuter.AbsolutePosition
             local AbsSize = ModeSelectOuter.AbsoluteSize
             if Mouse.X < AbsPos.X or Mouse.X > AbsPos.X + AbsSize.X
@@ -97,11 +124,13 @@ table.insert(Library.Signals, InputService.InputBegan:Connect(function(Input, Pr
     end
 end))
 
-table.insert(Library.Signals, InputService.InputEnded:Connect(function()
+table.insert(Library.Signals, InputService.InputEnded:Connect(function(Input)
+    if not _isRelevantInput(Input.UserInputType) then return end
+
     local kp = Library._KeyPickers
     for i = 1, #kp do
         local entry = kp[i]
-        if not entry.PickingRef[1] then
+        if not entry.PickingRef[1] and entry.KeyPicker.Mode == 'Hold' then
             entry.KeyPicker:Update()
         end
     end
@@ -1250,6 +1279,10 @@ do
                 Library.RegistryMap[Label].Properties.TextColor3 = 'AccentColor';
 
                 ModeSelectOuter.Visible = false;
+
+                if KeyPicker.Update then
+                    KeyPicker:Update();
+                end;
             end;
 
             function ModeButton:Deselect()
@@ -1273,34 +1306,60 @@ do
 
         local _keybindLayout = Library.KeybindContainer:FindFirstChildWhichIsA('UIListLayout');
 
+        -- Пересчёт размера рамки KeybindFrame раньше делался на КАЖДЫЙ вызов Update(),
+        -- то есть на каждое мигание подсветки Hold-кейбинда — а это GetChildren() +
+        -- AbsoluteSize/TextBounds по всем лейблам сразу, дорогие движковые вызовы.
+        -- Реально размер рамки должен меняться только когда добавился/убрался кейбинд
+        -- или у одного из них поменялся текст (сменили клавишу/режим/имя) — то есть
+        -- когда меняется ширина текста. Кэшируем предыдущий XSize и пересчитываем
+        -- полный обход только если текущий лейбл стал шире уже известного максимума
+        -- или его текст менялся с прошлого раза (тогда придётся пересчитать честно).
+        local _lastXSize = 0;
+
+        local function _resizeKeybindFrame(forceFullRecalc)
+            local YSize = _keybindLayout and _keybindLayout.AbsoluteContentSize.Y or 0;
+            -- Y-размер и так считает нативно UIListLayout — берём готовое значение
+            -- вместо ручного суммирования AbsoluteSize.Y по всем детям.
+
+            local XSize = _lastXSize;
+            if forceFullRecalc then
+                XSize = 0;
+                for _, Label in next, Library.KeybindContainer:GetChildren() do
+                    if Label:IsA('TextLabel') and Label.Visible then
+                        local w = Label.TextBounds.X;
+                        if w > XSize then XSize = w; end;
+                    end;
+                end;
+                _lastXSize = XSize;
+            end;
+
+            Library.KeybindFrame.Size = UDim2.new(0, math.max(XSize + 10, 210), 0, YSize + 23);
+        end;
+
+        Library._ResizeKeybindFrame = _resizeKeybindFrame;
+
         function KeyPicker:Update()
             if Info.NoUI then
                 return;
             end;
 
             local State = KeyPicker:GetState();
+            local NewText = string.format('[%s] %s (%s)', KeyPicker.Value or 'None', Info.Text, KeyPicker.Mode);
 
-            ContainerLabel.Text = string.format('[%s] %s (%s)', KeyPicker.Value or 'None', Info.Text, KeyPicker.Mode);
+            -- Текст и цвет — дешёвые операции, обновляем их всегда.
+            local TextChanged = ContainerLabel.Text ~= NewText;
+            if TextChanged then
+                ContainerLabel.Text = NewText;
+            end;
 
             ContainerLabel.Visible = true;
             ContainerLabel.TextColor3 = State and Library.AccentColor or Library.FontColor;
-
             Library.RegistryMap[ContainerLabel].Properties.TextColor3 = State and 'AccentColor' or 'FontColor';
 
-            local YSize = 0;
-            local XSize = 0;
-            for _, Label in next, Library.KeybindContainer:GetChildren() do
-                if Label:IsA('TextLabel') then
-                    if Label.Visible then
-                        YSize = YSize + Label.AbsoluteSize.Y;
-                        if Label.TextBounds.X > XSize then
-                            XSize = Label.TextBounds.X;
-                        end;
-                    end;
-                end;
-            end;
-
-            Library.KeybindFrame.Size = UDim2.new(0, math.max(XSize + 10, 210), 0, YSize + 23)
+            -- Полный пересчёт ширины рамки (дорогой) — только если реально сменился
+            -- текст (могла измениться ширина). Просто смена цвета/подсветки Hold
+            -- никогда не меняет ширину, так что размер трогать не нужно.
+            _resizeKeybindFrame(TextChanged);
         end;
 
         function KeyPicker:GetState()
@@ -2941,11 +3000,26 @@ function Library:SetWatermarkVisibility(Bool)
 end;
 
 function Library:SetWatermark(Text)
-    local X, Y = Library:GetTextBounds(Text, Library.Font, 14);
-    Library.Watermark.Size = UDim2.new(0, X + 15, 0, (Y * 1.5) + 3);
-    Library:SetWatermarkVisibility(true)
+    -- Частый кейс: внешний скрипт зовёт SetWatermark(Text) каждый кадр/тик,
+    -- обновляя FPS/пинг/таймер в одной строке. Раньше это означало вызов
+    -- TextService:GetTextSize (дорогая операция, растеризация шрифта) на
+    -- КАЖДЫЙ такой вызов, даже если сам текст не поменялся ни на символ.
+    if Library.WatermarkText.Text == Text then
+        Library:SetWatermarkVisibility(true);
+        return;
+    end;
 
     Library.WatermarkText.Text = Text;
+
+    -- GetTextSize остаётся самым надёжным источником точных размеров сразу
+    -- после смены текста (TextBounds лейбла обновляется не гарантированно
+    -- синхронно в тот же кадр). Но теперь он вызывается только когда текст
+    -- реально поменялся — а не на каждый тик/кадр с одинаковым значением,
+    -- что и было основной причиной нагрузки.
+    local X, Y = Library:GetTextBounds(Text, Library.Font, 14);
+    Library.Watermark.Size = UDim2.new(0, X + 15, 0, (Y * 1.5) + 3);
+
+    Library:SetWatermarkVisibility(true);
 end;
 
 function Library:Notify(Text, Time)
