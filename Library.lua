@@ -2625,9 +2625,20 @@ do
                 Dropdown.Value = nTable;
             else
                 if (not Val) then
-                    Dropdown.Value = nil;
+                    -- Раньше здесь Dropdown.Value обнулялся и ниже всё равно
+                    -- вызывался пользовательский Callback(nil) — при загрузке
+                    -- конфига с отсутствующим/невалидным значением для этого
+                    -- дропдауна это давало "Argument 1 missing or nil" внутри
+                    -- чужого callback'а, который не ожидает nil. Теперь просто
+                    -- выходим без изменения Value и без вызова колбэков.
+                    return;
                 elseif table.find(Dropdown.Values, Val) then
                     Dropdown.Value = Val;
+                else
+                    -- Значение из конфига не входит в текущий список Values
+                    -- (например список опций поменялся между версиями) —
+                    -- по той же причине просто игнорируем, не трогая колбэк.
+                    return;
                 end;
             end;
 
